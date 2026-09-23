@@ -1,0 +1,105 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens — EmpregaSaqua
+ * Primária: azul-oceano (lagoa/litoral de Saquarema). Acento: areia/coral para CTAs secundários.
+ * Todos os pares texto/fundo abaixo atendem WCAG AA (>= 4.5:1) em light e dark.
+ */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  --color-bg: var(--es-bg);
+  --color-surface: var(--es-surface);
+  --color-surface-2: var(--es-surface-2);
+  --color-border: var(--es-border);
+  --color-fg: var(--es-fg);
+  --color-muted: var(--es-muted);
+  --color-primary: var(--es-primary);
+  --color-primary-hover: var(--es-primary-hover);
+  --color-primary-fg: var(--es-primary-fg);
+  --color-primary-soft: var(--es-primary-soft);
+  --color-accent: var(--es-accent);
+  --color-danger: var(--es-danger);
+  --color-danger-soft: var(--es-danger-soft);
+  --color-success: var(--es-success);
+  --color-success-soft: var(--es-success-soft);
+  --color-warning: var(--es-warning);
+  --color-warning-soft: var(--es-warning-soft);
+  --color-ring: var(--es-ring);
+}
+
+:root {
+  color-scheme: light;
+  --es-bg: #f6f7f9;
+  --es-surface: #ffffff;
+  --es-surface-2: #f0f3f6;
+  --es-border: #dde3ea;
+  --es-fg: #0f1a24;
+  --es-muted: #52606d;
+  --es-primary: #0e7490;
+  --es-primary-hover: #155e75;
+  --es-primary-fg: #ffffff;
+  --es-primary-soft: #e0f2f7;
+  --es-accent: #c2410c;
+  --es-danger: #b42318;
+  --es-danger-soft: #fdecea;
+  --es-success: #067647;
+  --es-success-soft: #e6f6ee;
+  --es-warning: #93370d;
+  --es-warning-soft: #fef4e6;
+  --es-ring: #0891b2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --es-bg: #0b1117;
+    --es-surface: #121a22;
+    --es-surface-2: #18222c;
+    --es-border: #273442;
+    --es-fg: #e6edf3;
+    --es-muted: #9aa8b5;
+    --es-primary: #22b8d6;
+    --es-primary-hover: #56cfe6;
+    --es-primary-fg: #04222b;
+    --es-primary-soft: #0d2c36;
+    --es-accent: #fb8a4c;
+    --es-danger: #f97066;
+    --es-danger-soft: #3a1512;
+    --es-success: #47cd89;
+    --es-success-soft: #0f2d1f;
+    --es-warning: #fdb022;
+    --es-warning-soft: #3a2a0c;
+    --es-ring: #22b8d6;
+  }
+}
+
+html,
+body {
+  background: var(--es-bg);
+  color: var(--es-fg);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+:focus-visible {
+  outline: 2px solid var(--es-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
