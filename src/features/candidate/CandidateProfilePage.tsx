@@ -1,22 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { candidatesApi, usersApi, type CandidateProfileInput } from '@/api/endpoints';
 import type { CandidateProfile } from '@/api/types';
-import { useAuthActions } from '@/auth/useAuth';
-import { Alert, Button, Card, ConfirmDialog, Field, Input, PageHeader, PageLoader, Textarea } from '@/components/ui';
-import { ApiErrorAlert, isPendingEndpoint, PendingEndpoint, useToast } from '@/components/feedback';
+import { useAuthActions, useSession } from '@/auth/useAuth';
+import { Button, Card, CardSectionTitle, ConfirmDialog, Field, Input, PageHeader, PageLoader, Textarea } from '@/components/ui';
+import { ApiErrorAlert, useToast } from '@/components/feedback';
 import { CepLookup, StringListInput, cepToAddress } from '@/components/inputs';
+import { BriefcaseIcon, FileTextIcon, GraduationCapIcon, IdentificationCardIcon, SparkleIcon, TrashIcon } from '@/components/icons';
 import { decodeEntities, onlyDigits } from '@/lib/safe';
 import { errorMessage } from '@/lib/http';
+import { ResumePreview } from './ResumePreview';
 
 const month = z.string().regex(/^\d{4}-\d{2}$/, 'Use o formato AAAA-MM.');
 const optionalMonth = z.union([month, z.literal('')]).optional();
 
 const schema = z.object({
+  full_name: z.string().trim().max(150),
   bio: z.string().trim().max(2000, 'Máximo de 2000 caracteres.'),
   telefone: z
     .string()
@@ -49,10 +52,11 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 
-const EMPTY: Values = { bio: '', telefone: '', address: '', skills: [], experiences: [], educations: [] };
+const EMPTY: Values = { full_name: '', bio: '', telefone: '', address: '', skills: [], experiences: [], educations: [] };
 
 function toValues(p: CandidateProfile): Values {
   return {
+    full_name: decodeEntities(p.full_name),
     bio: decodeEntities(p.bio),
     telefone: p.telefone ?? '',
     address: decodeEntities(p.address),
@@ -77,13 +81,14 @@ function toValues(p: CandidateProfile): Values {
 export default function CandidateProfilePage() {
   const qc = useQueryClient();
   const toast = useToast();
+  const session = useSession();
   const profile = useQuery({ queryKey: ['candidate', 'me'], queryFn: ({ signal }) => candidatesApi.me(signal), retry: false });
-  const pendingGet = profile.isError && isPendingEndpoint(profile.error);
 
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: EMPTY });
   const exps = useFieldArray({ control: form.control, name: 'experiences' });
   const edus = useFieldArray({ control: form.control, name: 'educations' });
   const { errors, dirtyFields, isDirty } = form.formState;
+  const liveValues = useWatch({ control: form.control });
 
   useEffect(() => {
     if (profile.data) form.reset(toValues(profile.data));
@@ -94,6 +99,7 @@ export default function CandidateProfilePage() {
       // O PATCH do back SUBSTITUI experiences/educations quando enviados.
       // Enviamos só campos alterados: sem o GET /candidates/me, mandar o form vazio apagaria dados existentes.
       const body: CandidateProfileInput = {};
+      if (dirtyFields.full_name) body.full_name = v.full_name;
       if (dirtyFields.bio) body.bio = v.bio;
       if (dirtyFields.telefone) body.telefone = onlyDigits(v.telefone);
       if (dirtyFields.address) body.address = v.address;
@@ -113,102 +119,125 @@ export default function CandidateProfilePage() {
 
   return (
     <div>
-      <PageHeader title="Meu currículo" description="Essas informações aparecem para as empresas quando você se candidata." actions={<ResumeDownload />} />
-      {pendingGet && (
-        <div className="mb-4 flex flex-col gap-2">
-          <PendingEndpoint endpoint="GET /candidates/me" feature="Carregar currículo salvo" />
-          <Alert tone="primary">Você ainda pode editar: apenas as seções que você alterar serão enviadas, sem apagar o resto.</Alert>
-        </div>
-      )}
-      {profile.isError && !pendingGet && <ApiErrorAlert error={profile.error} />}
+      <PageHeader
+        title="Criar currículo"
+        description="Preencha suas informações e acompanhe o currículo tomando forma ao lado. Ele aparece para as empresas quando você se candidata."
+        actions={<ResumeDownload />}
+      />
+      {profile.isError && <div className="mb-6"><ApiErrorAlert error={profile.error} /></div>}
 
-      <form noValidate className="flex flex-col gap-6" onSubmit={form.handleSubmit((v) => save.mutate(v))}>
-        <Card>
-          <h2 className="mb-4 font-semibold">Sobre você</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Resumo profissional" error={errors.bio?.message} className="sm:col-span-2">
-              {({ id, describedBy, invalid }) => <Textarea id={id} rows={5} maxLength={2000} aria-describedby={describedBy} invalid={invalid} {...form.register('bio')} />}
-            </Field>
-            <Field label="Telefone / WhatsApp" error={errors.telefone?.message} hint="Com DDD. Ex.: 22999999999">
-              {({ id, describedBy, invalid }) => <Input id={id} type="tel" inputMode="tel" autoComplete="tel" aria-describedby={describedBy} invalid={invalid} {...form.register('telefone')} />}
-            </Field>
-            <Field label="Endereço" error={errors.address?.message}>
-              {({ id, describedBy, invalid }) => <Input id={id} autoComplete="street-address" maxLength={200} aria-describedby={describedBy} invalid={invalid} {...form.register('address')} />}
-            </Field>
-            <CepLookup className="sm:col-span-2" onFound={(r) => form.setValue('address', cepToAddress(r), { shouldDirty: true, shouldValidate: true })} />
+      <div className="grid gap-8 lg:grid-cols-[1fr_24rem]">
+        <form noValidate className="flex flex-col gap-6" onSubmit={form.handleSubmit((v) => save.mutate(v))}>
+          <Card>
+            <CardSectionTitle icon={<IdentificationCardIcon size={18} />} title="Sobre você" />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Nome completo" error={errors.full_name?.message} className="sm:col-span-2" required>
+                {({ id, describedBy, invalid }) => <Input id={id} maxLength={150} autoComplete="name" aria-describedby={describedBy} invalid={invalid} {...form.register('full_name')} />}
+              </Field>
+              <Field label="Resumo profissional" error={errors.bio?.message} className="sm:col-span-2" hint="Um parágrafo curto sobre sua experiência e o que você busca.">
+                {({ id, describedBy, invalid }) => <Textarea id={id} rows={5} maxLength={2000} aria-describedby={describedBy} invalid={invalid} {...form.register('bio')} />}
+              </Field>
+              <Field label="Telefone / WhatsApp" error={errors.telefone?.message} hint="Com DDD. Ex.: 22999999999">
+                {({ id, describedBy, invalid }) => <Input id={id} type="tel" inputMode="tel" autoComplete="tel" aria-describedby={describedBy} invalid={invalid} {...form.register('telefone')} />}
+              </Field>
+              <Field label="Endereço" error={errors.address?.message}>
+                {({ id, describedBy, invalid }) => <Input id={id} autoComplete="street-address" maxLength={200} aria-describedby={describedBy} invalid={invalid} {...form.register('address')} />}
+              </Field>
+              <CepLookup className="sm:col-span-2" onFound={(r) => form.setValue('address', cepToAddress(r), { shouldDirty: true, shouldValidate: true })} />
+            </div>
+          </Card>
+
+          <Card>
+            <CardSectionTitle icon={<SparkleIcon size={18} />} title="Habilidades" />
+            <Controller
+              control={form.control}
+              name="skills"
+              render={({ field }) => <StringListInput value={field.value} onChange={field.onChange} placeholder="Ex.: Atendimento ao cliente" maxItems={30} maxLength={50} />}
+            />
+          </Card>
+
+          <Card>
+            <div className="mb-5 flex items-center justify-between">
+              <CardSectionTitle icon={<BriefcaseIcon size={18} />} title="Experiência profissional" className="mb-0" />
+              <Button size="sm" variant="secondary" disabled={exps.fields.length >= 20} onClick={() => exps.append({ company: '', role: '', start_date: '', end_date: '', description: '' })}>
+                Adicionar
+              </Button>
+            </div>
+            {exps.fields.length === 0 && <EmptyHint text="Nenhuma experiência adicionada ainda." />}
+            <div className="flex flex-col gap-4">
+              {exps.fields.map((f, i) => {
+                const e = errors.experiences?.[i];
+                return (
+                  <fieldset key={f.id} className="grid gap-3 rounded-xl border border-border p-4 sm:grid-cols-2">
+                    <legend className="sr-only">Experiência {i + 1}</legend>
+                    <Field label="Empresa" error={e?.company?.message} required>{({ id, invalid }) => <Input id={id} invalid={invalid} {...form.register(`experiences.${i}.company`)} />}</Field>
+                    <Field label="Cargo" error={e?.role?.message} required>{({ id, invalid }) => <Input id={id} invalid={invalid} {...form.register(`experiences.${i}.role`)} />}</Field>
+                    <Field label="Início" error={e?.start_date?.message} required>{({ id, invalid }) => <Input id={id} type="month" invalid={invalid} {...form.register(`experiences.${i}.start_date`)} />}</Field>
+                    <Field label="Fim" error={e?.end_date?.message} hint="Deixe vazio se for o emprego atual.">{({ id, invalid }) => <Input id={id} type="month" invalid={invalid} {...form.register(`experiences.${i}.end_date`)} />}</Field>
+                    <Field label="Atividades" error={e?.description?.message} required className="sm:col-span-2">{({ id, invalid }) => <Textarea id={id} rows={3} maxLength={2000} invalid={invalid} {...form.register(`experiences.${i}.description`)} />}</Field>
+                    <div className="sm:col-span-2"><Button size="sm" variant="danger-ghost" onClick={() => exps.remove(i)}><TrashIcon size={14} /> Remover experiência</Button></div>
+                  </fieldset>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card>
+            <div className="mb-5 flex items-center justify-between">
+              <CardSectionTitle icon={<GraduationCapIcon size={18} />} title="Formação" className="mb-0" />
+              <Button size="sm" variant="secondary" disabled={edus.fields.length >= 20} onClick={() => edus.append({ institution: '', degree: '', field_of_study: '', start_date: '', end_date: '' })}>
+                Adicionar
+              </Button>
+            </div>
+            {edus.fields.length === 0 && <EmptyHint text="Nenhuma formação adicionada ainda." />}
+            <div className="flex flex-col gap-4">
+              {edus.fields.map((f, i) => {
+                const e = errors.educations?.[i];
+                return (
+                  <fieldset key={f.id} className="grid gap-3 rounded-xl border border-border p-4 sm:grid-cols-2">
+                    <legend className="sr-only">Formação {i + 1}</legend>
+                    <Field label="Instituição" error={e?.institution?.message} required>{({ id, invalid }) => <Input id={id} invalid={invalid} {...form.register(`educations.${i}.institution`)} />}</Field>
+                    <Field label="Grau" error={e?.degree?.message} required>{({ id, invalid }) => <Input id={id} placeholder="Ex.: Ensino Médio, Técnico, Bacharelado" invalid={invalid} {...form.register(`educations.${i}.degree`)} />}</Field>
+                    <Field label="Área de estudo" error={e?.field_of_study?.message} required className="sm:col-span-2">{({ id, invalid }) => <Input id={id} invalid={invalid} {...form.register(`educations.${i}.field_of_study`)} />}</Field>
+                    <Field label="Início" error={e?.start_date?.message} required>{({ id, invalid }) => <Input id={id} type="month" invalid={invalid} {...form.register(`educations.${i}.start_date`)} />}</Field>
+                    <Field label="Conclusão" error={e?.end_date?.message}>{({ id, invalid }) => <Input id={id} type="month" invalid={invalid} {...form.register(`educations.${i}.end_date`)} />}</Field>
+                    <div className="sm:col-span-2"><Button size="sm" variant="danger-ghost" onClick={() => edus.remove(i)}><TrashIcon size={14} /> Remover formação</Button></div>
+                  </fieldset>
+                );
+              })}
+            </div>
+          </Card>
+
+          <ApiErrorAlert error={save.error} />
+          <div className="sticky bottom-4 flex justify-end">
+            <Button type="submit" size="lg" loading={save.isPending} disabled={!isDirty} className="shadow-lift">Salvar currículo</Button>
           </div>
-        </Card>
+        </form>
 
-        <Card>
-          <h2 className="mb-4 font-semibold">Habilidades</h2>
-          <Controller
-            control={form.control}
-            name="skills"
-            render={({ field }) => <StringListInput value={field.value} onChange={field.onChange} placeholder="Ex.: Atendimento ao cliente" maxItems={30} maxLength={50} />}
+        <aside className="lg:sticky lg:top-24 lg:self-start">
+          <p className="mb-3 text-sm font-bold text-muted">Prévia do seu currículo</p>
+          <ResumePreview
+            email={session?.user.email ?? ''}
+            fullName={liveValues.full_name || ''}
+            values={{
+              bio: liveValues.bio ?? '',
+              telefone: liveValues.telefone ?? '',
+              address: liveValues.address ?? '',
+              skills: (liveValues.skills ?? []).filter((s): s is string => !!s),
+              experiences: (liveValues.experiences ?? []).filter((e): e is Values['experiences'][number] => !!e?.company || !!e?.role),
+              educations: (liveValues.educations ?? []).filter((e): e is Values['educations'][number] => !!e?.institution || !!e?.degree),
+            }}
           />
-        </Card>
-
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-semibold">Experiência profissional</h2>
-            <Button size="sm" variant="secondary" disabled={exps.fields.length >= 20} onClick={() => exps.append({ company: '', role: '', start_date: '', end_date: '', description: '' })}>
-              Adicionar
-            </Button>
-          </div>
-          {exps.fields.length === 0 && <p className="text-sm text-muted">Nenhuma experiência adicionada.</p>}
-          <div className="flex flex-col gap-4">
-            {exps.fields.map((f, i) => {
-              const e = errors.experiences?.[i];
-              return (
-                <fieldset key={f.id} className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-2">
-                  <legend className="sr-only">Experiência {i + 1}</legend>
-                  <Field label="Empresa" error={e?.company?.message} required>{({ id, invalid }) => <Input id={id} invalid={invalid} {...form.register(`experiences.${i}.company`)} />}</Field>
-                  <Field label="Cargo" error={e?.role?.message} required>{({ id, invalid }) => <Input id={id} invalid={invalid} {...form.register(`experiences.${i}.role`)} />}</Field>
-                  <Field label="Início" error={e?.start_date?.message} required>{({ id, invalid }) => <Input id={id} type="month" invalid={invalid} {...form.register(`experiences.${i}.start_date`)} />}</Field>
-                  <Field label="Fim" error={e?.end_date?.message} hint="Deixe vazio se for o emprego atual.">{({ id, invalid }) => <Input id={id} type="month" invalid={invalid} {...form.register(`experiences.${i}.end_date`)} />}</Field>
-                  <Field label="Atividades" error={e?.description?.message} required className="sm:col-span-2">{({ id, invalid }) => <Textarea id={id} rows={3} maxLength={2000} invalid={invalid} {...form.register(`experiences.${i}.description`)} />}</Field>
-                  <div className="sm:col-span-2"><Button size="sm" variant="danger-ghost" onClick={() => exps.remove(i)}>Remover experiência</Button></div>
-                </fieldset>
-              );
-            })}
-          </div>
-        </Card>
-
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-semibold">Formação</h2>
-            <Button size="sm" variant="secondary" disabled={edus.fields.length >= 20} onClick={() => edus.append({ institution: '', degree: '', field_of_study: '', start_date: '', end_date: '' })}>
-              Adicionar
-            </Button>
-          </div>
-          {edus.fields.length === 0 && <p className="text-sm text-muted">Nenhuma formação adicionada.</p>}
-          <div className="flex flex-col gap-4">
-            {edus.fields.map((f, i) => {
-              const e = errors.educations?.[i];
-              return (
-                <fieldset key={f.id} className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-2">
-                  <legend className="sr-only">Formação {i + 1}</legend>
-                  <Field label="Instituição" error={e?.institution?.message} required>{({ id, invalid }) => <Input id={id} invalid={invalid} {...form.register(`educations.${i}.institution`)} />}</Field>
-                  <Field label="Grau" error={e?.degree?.message} required>{({ id, invalid }) => <Input id={id} placeholder="Ex.: Ensino Médio, Técnico, Bacharelado" invalid={invalid} {...form.register(`educations.${i}.degree`)} />}</Field>
-                  <Field label="Área de estudo" error={e?.field_of_study?.message} required className="sm:col-span-2">{({ id, invalid }) => <Input id={id} invalid={invalid} {...form.register(`educations.${i}.field_of_study`)} />}</Field>
-                  <Field label="Início" error={e?.start_date?.message} required>{({ id, invalid }) => <Input id={id} type="month" invalid={invalid} {...form.register(`educations.${i}.start_date`)} />}</Field>
-                  <Field label="Conclusão" error={e?.end_date?.message}>{({ id, invalid }) => <Input id={id} type="month" invalid={invalid} {...form.register(`educations.${i}.end_date`)} />}</Field>
-                  <div className="sm:col-span-2"><Button size="sm" variant="danger-ghost" onClick={() => edus.remove(i)}>Remover formação</Button></div>
-                </fieldset>
-              );
-            })}
-          </div>
-        </Card>
-
-        <ApiErrorAlert error={save.error} />
-        <div className="sticky bottom-4 flex justify-end">
-          <Button type="submit" loading={save.isPending} disabled={!isDirty} className="shadow-lg">Salvar currículo</Button>
-        </div>
-      </form>
+        </aside>
+      </div>
 
       <DangerZone />
     </div>
   );
+}
+
+function EmptyHint({ text }: { text: string }) {
+  return <p className="mb-4 text-sm text-muted">{text}</p>;
 }
 
 function ResumeDownload() {
@@ -236,7 +265,7 @@ function ResumeDownload() {
   };
   return (
     <Button variant="secondary" onClick={() => void download()} loading={loading}>
-      Baixar currículo em PDF
+      <FileTextIcon size={16} /> Baixar em PDF
     </Button>
   );
 }
@@ -255,7 +284,7 @@ export function DangerZone() {
   });
   return (
     <Card className="mt-10 border-danger/40">
-      <h2 className="font-semibold text-danger">Excluir conta</h2>
+      <h2 className="font-bold text-danger">Excluir conta</h2>
       <p className="mt-1 text-sm text-muted">Seus dados pessoais serão anonimizados (LGPD). Essa ação não pode ser desfeita.</p>
       <Button variant="danger" className="mt-4" onClick={() => setOpen(true)}>Excluir minha conta</Button>
       <ConfirmDialog

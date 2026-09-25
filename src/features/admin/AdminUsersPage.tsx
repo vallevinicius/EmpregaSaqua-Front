@@ -65,7 +65,7 @@ export default function AdminUsersPage() {
         <EmptyState title="Nenhum usuário" />
       ) : (
         <>
-          <div className="overflow-x-auto rounded-xl border border-border bg-surface">
+          <div className="overflow-x-auto rounded-2xl border border-border bg-surface shadow-card">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-border text-xs uppercase tracking-wide text-muted">
                 <tr><th className="px-4 py-3">E-mail</th><th className="px-4 py-3">Perfil</th><th className="px-4 py-3">Criado em</th><th className="px-4 py-3"><span className="sr-only">Ações</span></th></tr>

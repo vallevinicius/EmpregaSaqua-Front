@@ -1,12 +1,27 @@
+@import '@fontsource-variable/schibsted-grotesk';
 @import 'tailwindcss';
 
 /*
  * Design tokens — EmpregaSaqua
- * Primária: azul-oceano (lagoa/litoral de Saquarema). Acento: areia/coral para CTAs secundários.
- * Todos os pares texto/fundo abaixo atendem WCAG AA (>= 4.5:1) em light e dark.
+ * Identidade (cores da logo): branco como base; azul #015AA6 é a cor principal (ações, links, blocos);
+ * verde #96B31E e amarelo #FFCC02 são acentos. Regras de contraste:
+ * - verde puro só em preenchimentos e na marca (2.4:1 no branco); texto verde usa --es-green-ink (6:1).
+ * - amarelo nunca sobre branco (1.5:1); usado sobre o azul (4.6:1) ou com texto escuro por cima (11:1).
+ * Tema claro apenas (o modo escuro foi desligado para manter o branco como cor principal).
+ * success/danger/warning ficam só para estados semânticos (status, erros).
+ * Azul sobre branco = 7:1 (AA).
+ * Tipo: Schibsted Grotesk (grotesca de jornal, eco dos classificados de emprego), família única.
+ * Fonte self-hosted (CSP: font-src 'self').
+ *
+ * Regra de forma: elementos clicáveis (botões, chips, busca) = pílula; superfícies (cards, blocos) = 16px
+ * (rounded-2xl); campos e ícones em caixinha = 12px (rounded-xl).
  */
+
+/* Desativa as variantes `dark:` — o site é sempre claro. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-sans: 'Schibsted Grotesk Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
 
   --color-bg: var(--es-bg);
   --color-surface: var(--es-surface);
@@ -19,6 +34,11 @@
   --color-primary-fg: var(--es-primary-fg);
   --color-primary-soft: var(--es-primary-soft);
   --color-accent: var(--es-accent);
+  --color-green: var(--es-green);
+  --color-green-ink: var(--es-green-ink);
+  --color-green-soft: var(--es-green-soft);
+  --color-yellow: var(--es-yellow);
+  --color-ink: var(--es-ink);
   --color-danger: var(--es-danger);
   --color-danger-soft: var(--es-danger-soft);
   --color-success: var(--es-success);
@@ -26,52 +46,38 @@
   --color-warning: var(--es-warning);
   --color-warning-soft: var(--es-warning-soft);
   --color-ring: var(--es-ring);
+
+  --shadow-card: var(--es-shadow-card);
+  --shadow-lift: var(--es-shadow-lift);
 }
 
 :root {
   color-scheme: light;
-  --es-bg: #f6f7f9;
+  --es-bg: #ffffff;
   --es-surface: #ffffff;
-  --es-surface-2: #f0f3f6;
-  --es-border: #dde3ea;
-  --es-fg: #0f1a24;
-  --es-muted: #52606d;
-  --es-primary: #0e7490;
-  --es-primary-hover: #155e75;
+  --es-surface-2: #f3f6fa;
+  --es-border: #e1e7ef;
+  --es-fg: #0f1e33;
+  --es-muted: #55637a;
+  --es-primary: #015aa6;
+  --es-primary-hover: #014a8a;
   --es-primary-fg: #ffffff;
-  --es-primary-soft: #e0f2f7;
-  --es-accent: #c2410c;
+  --es-primary-soft: #e8f0f9;
+  --es-accent: #015aa6;
+  --es-green: #96b31e;
+  --es-green-ink: #556b0f;
+  --es-green-soft: #f1f6e1;
+  --es-yellow: #ffcc02;
+  --es-ink: #0f1e33;
   --es-danger: #b42318;
   --es-danger-soft: #fdecea;
   --es-success: #067647;
   --es-success-soft: #e6f6ee;
   --es-warning: #93370d;
   --es-warning-soft: #fef4e6;
-  --es-ring: #0891b2;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --es-bg: #0b1117;
-    --es-surface: #121a22;
-    --es-surface-2: #18222c;
-    --es-border: #273442;
-    --es-fg: #e6edf3;
-    --es-muted: #9aa8b5;
-    --es-primary: #22b8d6;
-    --es-primary-hover: #56cfe6;
-    --es-primary-fg: #04222b;
-    --es-primary-soft: #0d2c36;
-    --es-accent: #fb8a4c;
-    --es-danger: #f97066;
-    --es-danger-soft: #3a1512;
-    --es-success: #47cd89;
-    --es-success-soft: #0f2d1f;
-    --es-warning: #fdb022;
-    --es-warning-soft: #3a2a0c;
-    --es-ring: #22b8d6;
-  }
+  --es-ring: #015aa6;
+  --es-shadow-card: 0 1px 2px rgb(15 30 51 / 0.04), 0 4px 16px rgb(15 30 51 / 0.05);
+  --es-shadow-lift: 0 2px 4px rgb(15 30 51 / 0.05), 0 12px 32px rgb(15 30 51 / 0.1);
 }
 
 html,
@@ -91,6 +97,77 @@ body {
   outline-offset: 2px;
 }
 
+/* Hero: branco puro. O destaque é a tipografia, não o fundo. */
+.bg-hero {
+  background-color: #ffffff;
+}
+
+/* Blocos sólidos da marca (rodapé, CTA, painel do login): azul #015AA6 com leve profundidade. */
+.bg-brand {
+  background-color: #015aa6;
+  background-image:
+    radial-gradient(50rem 26rem at 110% -20%, rgb(255 255 255 / 0.12), transparent 60%),
+    radial-gradient(36rem 20rem at -10% 120%, rgb(0 0 0 / 0.14), transparent 60%);
+}
+
+/* Entrada do hero: sobe e aparece uma vez, em cascata via animation-delay. Só com movimento permitido. */
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    animation: rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/*
+ * Entrada das telas de Entrar/Cadastre-se: o painel verde desliza da esquerda e, em seguida,
+ * os blocos do formulário aparecem um a um. `--stagger-base` define quando a cascata começa.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .panel-in {
+    animation: panel-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .stagger > * {
+    animation: rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--stagger-base, 0ms) + var(--i, 0) * 70ms);
+  }
+  .stagger > :nth-child(2) { --i: 1; }
+  .stagger > :nth-child(3) { --i: 2; }
+  .stagger > :nth-child(4) { --i: 3; }
+  .stagger > :nth-child(5) { --i: 4; }
+  .stagger > :nth-child(6) { --i: 5; }
+  .stagger > :nth-child(7) { --i: 6; }
+  .stagger > :nth-child(8) { --i: 7; }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(-32px) scale(0.98);
+  }
+}
+
+/* Impressão do currículo (/curriculo): só a prévia aparece no PDF. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #resume-print,
+  #resume-print * {
+    visibility: visible;
+  }
+  #resume-print {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -101,5 +178,6 @@ body {
 }
 
 dialog::backdrop {
-  background: rgb(0 0 0 / 0.45);
+  background: rgb(15 30 51 / 0.5);
+  backdrop-filter: blur(2px);
 }

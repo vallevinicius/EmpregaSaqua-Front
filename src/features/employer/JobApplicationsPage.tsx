@@ -1,15 +1,14 @@
 import { Link, useNavigate, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { applicationsApi, jobsApi, talentPoolApi } from '@/api/endpoints';
+import { applicationsApi, jobsApi } from '@/api/endpoints';
 import type { ApplicationStatus, JobApplication } from '@/api/types';
 import { useSession } from '@/auth/useAuth';
 import { Badge, Button, EmptyState, PageHeader, Select, Skeleton } from '@/components/ui';
 import { ErrorState, SafeParagraphs, useToast } from '@/components/feedback';
 import { APPLICATION_STATUS_LABEL, formatDate } from '@/lib/format';
 import { decodeEntities, safeHttpUrl } from '@/lib/safe';
-import { ApiError } from '@/lib/http';
 import { chatLink } from '@/features/chat/chatLink';
-import { CandidateSummary } from './CandidateCard';
+import { CandidateSummary, SaveToPoolButton } from './CandidateCard';
 
 const STATUSES = Object.keys(APPLICATION_STATUS_LABEL) as ApplicationStatus[];
 
@@ -45,15 +44,6 @@ export default function JobApplicationsPage() {
       toast('Status atualizado.');
       void qc.invalidateQueries({ queryKey: ['analytics', 'employer'] });
     },
-  });
-
-  const save = useMutation({
-    mutationFn: (candidateId: string) => talentPoolApi.save(candidateId),
-    onSuccess: () => {
-      toast('Candidato salvo no banco de talentos.');
-      void qc.invalidateQueries({ queryKey: ['talent-pool'] });
-    },
-    onError: (e) => toast(e instanceof ApiError && e.status === 409 ? 'Este candidato já está no seu banco de talentos.' : e.message, 'danger'),
   });
 
   return (
@@ -111,9 +101,7 @@ export default function JobApplicationsPage() {
                           Mensagem
                         </Button>
                       )}
-                      <Button size="sm" variant="ghost" loading={save.isPending && save.variables === a.applicant_id} onClick={() => save.mutate(a.applicant_id)}>
-                        Salvar
-                      </Button>
+                      <SaveToPoolButton candidateId={a.applicant_id} />
                     </>
                   }
                 />

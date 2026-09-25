@@ -79,7 +79,7 @@ export default function ChatPage() {
       <PageHeader title="Mensagens" actions={<ConnectionBadge status={socket.status} />} />
       {socket.status === 'unauthorized' && <Alert tone="danger">Não foi possível autenticar no chat. Entre novamente.</Alert>}
       <div className="grid min-h-[60vh] gap-4 lg:grid-cols-[18rem_1fr]">
-        <aside aria-label="Conversas" className="rounded-xl border border-border bg-surface p-2">
+        <aside aria-label="Conversas" className="rounded-2xl border border-border bg-surface shadow-card p-2">
           {rooms.isPending ? (
             <div className="p-4"><Spinner label="Carregando conversas" /></div>
           ) : rooms.isError ? (
@@ -114,7 +114,7 @@ export default function ChatPage() {
           )}
         </aside>
 
-        <section aria-label="Conversa" className="flex min-h-[60vh] flex-col rounded-xl border border-border bg-surface">
+        <section aria-label="Conversa" className="flex min-h-[60vh] flex-col rounded-2xl border border-border bg-surface shadow-card">
           {!target ? (
             <div className="m-auto p-6"><EmptyState title="Selecione uma conversa" description="Você também pode iniciar uma conversa a partir de uma candidatura." /></div>
           ) : joinError ? (

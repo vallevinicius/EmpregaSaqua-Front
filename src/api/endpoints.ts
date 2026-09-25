@@ -70,6 +70,16 @@ export interface RegisterInput {
   password: string;
   /** ADMIN nunca é enviado pelo front. */
   role: Extract<Role, 'JOB_SEEKER' | 'EMPLOYER'>;
+  /** Cria o CompanyProfile já no cadastro (role EMPLOYER). Sem isso o perfil nunca existe (ver users.service.ts#create). */
+  nome_fantasia?: string;
+  cnpj?: string;
+  endereco?: string;
+  /** Cria o CandidateProfile já no cadastro (role JOB_SEEKER). */
+  full_name?: string;
+  address?: string;
+  bio?: string;
+  /** Compartilhado entre empresa e candidato. */
+  telefone?: string;
 }
 
 export const authApi = {
@@ -164,6 +174,7 @@ export const applicationsApi = {
 // ---------- Candidates ----------
 
 export interface CandidateProfileInput {
+  full_name?: string;
   bio?: string;
   telefone?: string;
   address?: string;
@@ -175,7 +186,6 @@ export interface CandidateProfileInput {
 export const candidatesApi = {
   search: (params: { skills?: string; role?: string; location?: string; page?: number; limit?: number }, signal?: AbortSignal) =>
     request<CandidateSearchResult>('/candidates', { query: params, signal }),
-  /** @pending GET /candidates/me */
   me: (signal?: AbortSignal) => request<CandidateProfile>('/candidates/me', { signal }),
   updateProfile: (input: CandidateProfileInput) =>
     request<CandidateProfile>('/candidates/profile', { method: 'PATCH', body: input }),
@@ -185,9 +195,8 @@ export const candidatesApi = {
 // ---------- Users / Company ----------
 
 export const usersApi = {
-  /** @pending GET /users/company-profile */
   companyProfile: (signal?: AbortSignal) => request<CompanyProfile>('/users/company-profile', { signal }),
-  updateCompanyProfile: (input: { nome_fantasia?: string; endereco?: string }) =>
+  updateCompanyProfile: (input: { nome_fantasia?: string; endereco?: string; telefone?: string; cnpj?: string }) =>
     request<CompanyProfile>('/users/company-profile', { method: 'PATCH', body: input }),
   deleteAccount: () => request<void>('/users/account', { method: 'DELETE' }),
 };

@@ -46,9 +46,9 @@ const timeFmt = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-d
 const rtf = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'auto' });
 
 export function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—' : dateFmt.format(d);
+  return Number.isNaN(d.getTime()) ? '-' : dateFmt.format(d);
 }
 
 export function formatTime(iso: string): string {
@@ -66,9 +66,31 @@ export function relativeDate(iso: string | null | undefined): string {
   return formatDate(iso);
 }
 
+const monthYearFmt = new Intl.DateTimeFormat('pt-BR', { month: 'short', year: 'numeric' });
+
+/** "2023-05" -> "mai. 2023". Usado no currículo (experiências/formação). */
+export function formatMonthYear(value: string | null | undefined): string {
+  if (!value) return 'Atual';
+  const [y, m] = value.split('-').map(Number);
+  if (!y || !m) return value;
+  const d = new Date(y, m - 1, 1);
+  return Number.isNaN(d.getTime()) ? value : monthYearFmt.format(d);
+}
+
 export function formatCep(value: string): string {
   const d = value.replace(/\D/g, '').slice(0, 8);
   return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+}
+
+/** Máscara de CNPJ enquanto digita: 00.000.000/0000-00. O back só recebe os dígitos (ver onlyDigits). */
+export function formatCnpj(value: string): string {
+  const d = value.replace(/\D/g, '').slice(0, 14);
+  let out = d.slice(0, 2);
+  if (d.length > 2) out += `.${d.slice(2, 5)}`;
+  if (d.length > 5) out += `.${d.slice(5, 8)}`;
+  if (d.length > 8) out += `/${d.slice(8, 12)}`;
+  if (d.length > 12) out += `-${d.slice(12, 14)}`;
+  return out;
 }
 
 export function formatPhone(value: string | null | undefined): string {

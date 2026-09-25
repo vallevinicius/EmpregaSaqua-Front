@@ -3,9 +3,9 @@ import { useState } from 'react';
 /** Stat tile: número-herói. Sem plot => sem tooltip. */
 export function StatTile({ label, value, hint }: { label: string; value: number | string; hint?: string }) {
   return (
-    <div className="rounded-xl border border-border bg-surface p-5">
-      <p className="text-sm text-muted">{label}</p>
-      <p className="mt-1 text-3xl font-semibold tabular-nums tracking-tight">{typeof value === 'number' ? value.toLocaleString('pt-BR') : value}</p>
+    <div className="rounded-2xl border border-border bg-surface p-6 shadow-card">
+      <p className="text-sm font-medium text-muted">{label}</p>
+      <p className="mt-2 text-4xl font-extrabold tabular-nums tracking-tight">{typeof value === 'number' ? value.toLocaleString('pt-BR') : value}</p>
       {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
     </div>
   );
@@ -22,8 +22,8 @@ export function BarList({ title, rows }: { title: string; rows: { label: string;
   const max = Math.max(1, ...rows.map((r) => r.value));
   const total = rows.reduce((s, r) => s + r.value, 0);
   return (
-    <figure className="rounded-xl border border-border bg-surface p-5">
-      <figcaption className="mb-4 text-sm font-semibold">{title}</figcaption>
+    <figure className="rounded-2xl border border-border bg-surface p-6 shadow-card">
+      <figcaption className="mb-4 text-sm font-bold">{title}</figcaption>
       <ul className="flex flex-col gap-1" aria-hidden>
         {rows.map((r, i) => {
           const pct = total ? Math.round((r.value / total) * 100) : 0;
@@ -38,8 +38,8 @@ export function BarList({ title, rows }: { title: string; rows: { label: string;
               className="relative grid grid-cols-[8.5rem_1fr_2.5rem] items-center gap-3 rounded-md px-1 py-1.5 hover:bg-surface-2 focus:bg-surface-2 focus:outline-none"
             >
               <span className="truncate text-sm text-muted">{r.label}</span>
-              <span className="h-3 rounded-r-[4px] bg-surface-2">
-                <span className="block h-full rounded-r-[4px] bg-primary transition-[width]" style={{ width: `${(r.value / max) * 100}%` }} />
+              <span className="h-3 rounded-full bg-surface-2">
+                <span className="block h-full rounded-full bg-primary transition-[width]" style={{ width: `${(r.value / max) * 100}%` }} />
               </span>
               <span className="text-right text-sm font-medium tabular-nums">{r.value}</span>
               {hover === i && (

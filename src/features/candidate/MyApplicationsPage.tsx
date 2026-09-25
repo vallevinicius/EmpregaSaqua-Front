@@ -69,7 +69,7 @@ export default function MyApplicationsPage() {
           {list.map((app) => {
             const job = jobById.get(app.job_id);
             return (
-              <li key={app.id} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 sm:flex-row sm:items-center">
+              <li key={app.id} className="flex flex-col gap-3 rounded-2xl border border-border bg-surface shadow-card p-4 sm:flex-row sm:items-center">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">
                     {job ? (
