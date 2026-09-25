@@ -154,6 +154,10 @@ body {
 
 /* Impressão do currículo (/curriculo): só a prévia aparece no PDF. */
 @media print {
+  /* Margem 0 remove o cabeçalho/rodapé automáticos do navegador (data, título do site, URL). */
+  @page {
+    margin: 0;
+  }
   body * {
     visibility: hidden;
   }
@@ -165,6 +169,8 @@ body {
     position: absolute;
     inset: 0 auto auto 0;
     width: 100%;
+    box-sizing: border-box;
+    padding: 12mm 14mm; /* a margem da página foi zerada acima */
   }
 }
 
