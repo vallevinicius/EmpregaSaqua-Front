@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { jobsApi } from '@/api/endpoints';
 import type { Job, JobStatus } from '@/api/types';
-import { Badge, Button, ConfirmDialog, EmptyState, PageHeader, Pagination, Select, Skeleton } from '@/components/ui';
+import { Badge, Button, ConfirmDialog, EmptyState, PageHeader, Pagination, Select, Skeleton, buttonClass } from '@/components/ui';
 import { ErrorState, SafeText, useToast } from '@/components/feedback';
 import { CONTRACT_LABEL, JOB_STATUS_LABEL, WORK_MODEL_LABEL, formatDate } from '@/lib/format';
 
@@ -44,7 +44,7 @@ export default function EmployerJobsPage() {
       <PageHeader
         title="Minhas vagas"
         description="Vagas novas passam por análise antes de ficarem públicas."
-        actions={<Link to="/empresa/vagas/nova" className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-fg hover:bg-primary-hover">Publicar vaga</Link>}
+        actions={<Link to="/empresa/vagas/nova" className={buttonClass()}>Publicar vaga</Link>}
       />
       <div className="mb-4 flex items-center gap-2">
         <label htmlFor="st" className="text-sm text-muted">Status</label>
@@ -64,7 +64,7 @@ export default function EmployerJobsPage() {
         <>
           <ul className="flex flex-col gap-3">
             {q.data.data.map((job) => (
-              <li key={job.id} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 md:flex-row md:items-center">
+              <li key={job.id} className="flex flex-col gap-3 rounded-2xl border border-border bg-surface shadow-card p-4 md:flex-row md:items-center">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium"><SafeText>{job.title}</SafeText></p>
                   <p className="text-sm text-muted">
@@ -73,8 +73,8 @@ export default function EmployerJobsPage() {
                 </div>
                 <Badge tone={STATUS_TONE[job.status]}>{JOB_STATUS_LABEL[job.status]}</Badge>
                 <div className="flex flex-wrap gap-2">
-                  <Link to={`/empresa/vagas/${encodeURIComponent(job.id)}/candidatos`} className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-surface-2">Candidatos</Link>
-                  <Link to={`/empresa/vagas/${encodeURIComponent(job.id)}/editar`} className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-surface-2">Editar</Link>
+                  <Link to={`/empresa/vagas/${encodeURIComponent(job.id)}/candidatos`} className={buttonClass('secondary', 'sm')}>Candidatos</Link>
+                  <Link to={`/empresa/vagas/${encodeURIComponent(job.id)}/editar`} className={buttonClass('secondary', 'sm')}>Editar</Link>
                   <Button size="sm" variant="danger-ghost" onClick={() => setToDelete(job)}>Remover</Button>
                 </div>
               </li>

@@ -103,7 +103,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             className={cx(
-              'pointer-events-auto rounded-lg px-4 py-2.5 text-sm font-medium shadow-lg',
+              'pointer-events-auto rounded-full px-5 py-3 text-sm font-semibold shadow-lift',
               t.tone === 'success' && 'bg-success text-white dark:text-black',
               t.tone === 'danger' && 'bg-danger text-white dark:text-black',
               t.tone === 'primary' && 'bg-primary text-primary-fg',

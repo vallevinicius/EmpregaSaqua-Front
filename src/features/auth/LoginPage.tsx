@@ -5,9 +5,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthActions } from '@/auth/useAuth';
 import { homeFor, safeRedirect } from '@/auth/guards';
-import { Button, Card, Field, Input } from '@/components/ui';
+import { Button, Field, Input } from '@/components/ui';
 import { ApiErrorAlert } from '@/components/feedback';
 import { ApiError } from '@/lib/http';
+import { AuthShell } from './AuthShell';
 
 const schema = z.object({
   email: z.email('E-mail inválido.').max(254),
@@ -35,28 +36,33 @@ export default function LoginPage() {
   const shownError = err instanceof ApiError && err.status === 401 ? new ApiError(401, 'E-mail ou senha incorretos.', { path: err.path }) : err;
 
   return (
-    <div className="mx-auto max-w-sm py-8">
-      <h1 className="text-center text-2xl font-semibold tracking-tight">Entrar</h1>
-      <p className="mt-1 text-center text-sm text-muted">Acesse sua conta EmpregaSaqua.</p>
-      <Card className="mt-6">
-        <form noValidate className="flex flex-col gap-4" onSubmit={form.handleSubmit((v) => mutation.mutate(v))}>
-          <Field label="E-mail" error={form.formState.errors.email?.message} required>
-            {({ id, describedBy, invalid }) => (
-              <Input id={id} type="email" autoComplete="email" autoFocus aria-describedby={describedBy} invalid={invalid} {...form.register('email')} />
-            )}
-          </Field>
-          <Field label="Senha" error={form.formState.errors.password?.message} required>
-            {({ id, describedBy, invalid }) => (
-              <Input id={id} type="password" autoComplete="current-password" aria-describedby={describedBy} invalid={invalid} {...form.register('password')} />
-            )}
-          </Field>
-          <ApiErrorAlert error={shownError} />
-          <Button type="submit" loading={mutation.isPending}>Entrar</Button>
-        </form>
-      </Card>
-      <p className="mt-4 text-center text-sm text-muted">
-        Não tem conta? <Link to="/cadastro" className="font-medium text-primary hover:underline">Cadastre-se</Link>
-      </p>
-    </div>
+    <AuthShell
+      title="Bem-vindo de volta"
+      subtitle="Entre na sua conta EmpregaSaqua."
+      aside={{
+        heading: 'Oportunidades em Saquarema esperam por você.',
+        points: ['Acompanhe suas candidaturas', 'Converse direto com as empresas', 'Encontre vagas perto de casa'],
+      }}
+      footer={
+        <>
+          Não tem conta? <Link to="/cadastro" className="font-semibold text-primary hover:underline">Cadastre-se</Link>
+        </>
+      }
+    >
+      <form noValidate className="stagger flex flex-col gap-5 [--stagger-base:250ms]" onSubmit={form.handleSubmit((v) => mutation.mutate(v))}>
+        <Field label="E-mail" error={form.formState.errors.email?.message} required>
+          {({ id, describedBy, invalid }) => (
+            <Input id={id} type="email" autoComplete="email" autoFocus placeholder="voce@email.com" aria-describedby={describedBy} invalid={invalid} {...form.register('email')} />
+          )}
+        </Field>
+        <Field label="Senha" error={form.formState.errors.password?.message} required>
+          {({ id, describedBy, invalid }) => (
+            <Input id={id} type="password" autoComplete="current-password" aria-describedby={describedBy} invalid={invalid} {...form.register('password')} />
+          )}
+        </Field>
+        <ApiErrorAlert error={shownError} />
+        <Button type="submit" size="lg" loading={mutation.isPending}>Entrar</Button>
+      </form>
+    </AuthShell>
   );
 }

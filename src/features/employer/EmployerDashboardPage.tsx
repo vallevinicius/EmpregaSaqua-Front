@@ -2,8 +2,8 @@ import { Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { analyticsApi, usersApi } from '@/api/endpoints';
 import type { ApplicationStatus } from '@/api/types';
-import { Alert, PageHeader, Skeleton } from '@/components/ui';
-import { ErrorState, isPendingEndpoint } from '@/components/feedback';
+import { Alert, PageHeader, Skeleton, buttonClass } from '@/components/ui';
+import { ErrorState } from '@/components/feedback';
 import { BarList, StatTile } from '@/components/charts';
 import { APPLICATION_STATUS_LABEL } from '@/lib/format';
 
@@ -20,9 +20,9 @@ export default function EmployerDashboardPage() {
     <div>
       <PageHeader
         title="Painel da empresa"
-        actions={<Link to="/empresa/vagas/nova" className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-fg hover:bg-primary-hover">Publicar vaga</Link>}
+        actions={<Link to="/empresa/vagas/nova" className={buttonClass()}>Publicar vaga</Link>}
       />
-      <VerificationBanner status={company.data?.verification_status} unknown={company.isError && isPendingEndpoint(company.error)} />
+      <VerificationBanner status={company.data?.verification_status} unknown={company.isError} />
       {stats.isPending ? (
         <div className="grid gap-4 sm:grid-cols-2"><Skeleton className="h-28" /><Skeleton className="h-28" /></div>
       ) : stats.isError ? (

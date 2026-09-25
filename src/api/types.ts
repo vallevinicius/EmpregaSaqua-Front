@@ -40,6 +40,7 @@ export interface CompanyProfile {
   nome_fantasia: string;
   cnpj: string | null;
   endereco: string | null;
+  telefone: string | null;
   logo_url: string | null;
   verification_status: VerificationStatus;
   verification_document_url?: string | null;
@@ -102,6 +103,7 @@ export interface Education {
 export interface CandidateProfile {
   id: string;
   user_id: string;
+  full_name: string | null;
   bio: string | null;
   telefone: string | null;
   habilidades: string | null;

@@ -38,7 +38,12 @@ export default defineConfig(({ mode }) => {
         '/socket.io': { target, ws: true, changeOrigin: true },
       },
     },
-    build: { sourcemap: false, target: 'es2022' },
+    build: {
+      sourcemap: false,
+      target: 'es2022',
+      // Fontes nunca viram data: URI — a CSP de produção só permite font-src 'self'.
+      assetsInlineLimit: (file: string) => (/\.(woff2?|ttf|otf)$/.test(file) ? false : undefined),
+    },
     test: { environment: 'jsdom', include: ['src/**/*.test.ts'] },
   };
 });

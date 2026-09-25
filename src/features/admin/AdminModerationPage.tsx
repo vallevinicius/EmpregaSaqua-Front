@@ -71,11 +71,11 @@ function PendingJobs() {
         <>
           <ul className="flex flex-col gap-3">
             {q.data.data.map((j) => (
-              <li key={j.id} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 md:flex-row md:items-center">
+              <li key={j.id} className="flex flex-col gap-3 rounded-2xl border border-border bg-surface shadow-card p-4 md:flex-row md:items-center">
                 <div className="min-w-0 flex-1">
                   <Link to={`/vagas/${encodeURIComponent(j.id)}`} className="font-medium hover:text-primary"><SafeText>{j.title}</SafeText></Link>
                   <p className="text-sm text-muted">
-                    <SafeText>{j.employer?.company_profile?.nome_fantasia ?? '—'}</SafeText> · {WORK_MODEL_LABEL[j.work_model]} · {CONTRACT_LABEL[j.contract_type]} · {formatDate(j.created_at)}
+                    <SafeText>{j.employer?.company_profile?.nome_fantasia ?? '-'}</SafeText> · {WORK_MODEL_LABEL[j.work_model]} · {CONTRACT_LABEL[j.contract_type]} · {formatDate(j.created_at)}
                   </p>
                 </div>
                 <ApproveReject disabled={act.isPending} onApprove={() => act.mutate({ id: j.id, approve: true })} onReject={() => act.mutate({ id: j.id, approve: false })} />
@@ -106,14 +106,14 @@ function PendingCompanies() {
         <>
           <ul className="flex flex-col gap-3">
             {q.data.data.map((c) => (
-              <li key={c.id} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 md:flex-row md:items-center">
+              <li key={c.id} className="flex flex-col gap-3 rounded-2xl border border-border bg-surface shadow-card p-4 md:flex-row md:items-center">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium"><SafeText>{c.nome_fantasia}</SafeText></p>
                   <p className="text-sm text-muted">
-                    {c.user?.email ?? '—'} · CNPJ {c.cnpj ?? 'não informado'} · {formatDate(c.created_at)}
+                    {c.user?.email ?? '-'} · CNPJ {c.cnpj ?? 'não informado'} · {formatDate(c.created_at)}
                   </p>
                   {c.verification_document_url ? (
-                    <p className="text-sm">Documento enviado (acesso via endpoint autenticado — ver contrato)</p>
+                    <p className="text-sm">Documento enviado (acesso via endpoint autenticado, ver contrato)</p>
                   ) : (
                     <p className="text-sm text-warning">Sem documento enviado</p>
                   )}
