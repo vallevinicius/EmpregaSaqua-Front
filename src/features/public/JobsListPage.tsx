@@ -1,13 +1,16 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { jobsApi, type JobFilters } from '@/api/endpoints';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { jobAlertsApi, jobsApi, type JobFilters } from '@/api/endpoints';
 import type { ContractType, WorkModel } from '@/api/types';
+import { useSession } from '@/auth/useAuth';
 import { Button, EmptyState, Pagination, Skeleton, cx } from '@/components/ui';
-import { ErrorState } from '@/components/feedback';
+import { ErrorState, useToast } from '@/components/feedback';
+import { errorMessage } from '@/lib/http';
 import { CONTRACT_LABEL, WORK_MODEL_LABEL } from '@/lib/format';
 import {
   AccessibilityIcon,
+  BellIcon,
   CheckCircleIcon,
   FileTextIcon,
   FilterIcon,
@@ -20,6 +23,7 @@ import {
   XIcon,
 } from '@/components/icons';
 import { JobCard } from './JobCard';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 const WORK_MODELS = Object.keys(WORK_MODEL_LABEL) as WorkModel[];
 const CONTRACTS = Object.keys(CONTRACT_LABEL) as ContractType[];
@@ -45,6 +49,7 @@ function readFilters(sp: URLSearchParams): Required<Pick<JobFilters, 'page'>> & 
 }
 
 export function JobsListPage() {
+  useDocumentTitle("Vagas em Saquarema e região", "Vagas de emprego em Saquarema-RJ e região. Busque por cargo, bairro e tipo de contrato e candidate-se grátis.");
   const [sp, setSp] = useSearchParams();
   const filters = readFilters(sp);
   const [q, setQ] = useState(filters.title_like ?? '');
@@ -250,6 +255,7 @@ export function JobsListPage() {
                   ))}
                 </ul>
               )}
+              {hasFilters && <JobAlertButton filters={filters} className="ml-auto" />}
             </div>
 
             {query.isPending ? (
@@ -285,6 +291,43 @@ export function JobsListPage() {
       {landing && <HowItWorks />}
       {landing && <EmployerCta />}
     </div>
+  );
+}
+
+/** Cria um JobAlert a partir dos filtros atuais da busca. Só faz sentido logado como candidato. */
+function JobAlertButton({ filters, className }: { filters: JobFilters; className?: string }) {
+  const session = useSession();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: () =>
+      jobAlertsApi.create({
+        keyword: filters.title_like,
+        address: filters.address,
+        work_model: filters.work_model || undefined,
+        contract_type: filters.contract_type || undefined,
+        is_pcd: filters.is_pcd,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['job-alerts', 'mine'] });
+      toast('Alerta criado! Você recebe um e-mail assim que surgir uma vaga assim.', 'success');
+    },
+    onError: (e) => toast(errorMessage(e), 'danger'),
+  });
+
+  if (session?.user.role !== 'JOB_SEEKER') return null;
+
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      className={className}
+      onClick={() => mutation.mutate()}
+      disabled={mutation.isPending || mutation.isSuccess}
+    >
+      <BellIcon size={16} /> {mutation.isSuccess ? 'Você será avisado' : 'Avise-me de vagas assim'}
+    </Button>
   );
 }
 

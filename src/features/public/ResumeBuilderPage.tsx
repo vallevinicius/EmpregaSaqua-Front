@@ -9,6 +9,7 @@ import { CepLookup, StringListInput, cepToAddress } from '@/components/inputs';
 import { BriefcaseIcon, FileTextIcon, GraduationCapIcon, IdentificationCardIcon, SparkleIcon, TrashIcon } from '@/components/icons';
 import { onlyDigits } from '@/lib/safe';
 import { ResumePreview } from '@/features/candidate/ResumePreview';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 /**
  * Criador de currículo público: funciona sem conta e sem back. Os dados ficam só neste navegador
@@ -61,6 +62,7 @@ function loadDraft(): Values {
 }
 
 export default function ResumeBuilderPage() {
+  useDocumentTitle("Crie seu currículo", "Monte seu currículo grátis, sem cadastro, e baixe em PDF.");
   const session = useSession();
   const [draft] = useState(loadDraft);
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: draft, mode: 'onChange' });

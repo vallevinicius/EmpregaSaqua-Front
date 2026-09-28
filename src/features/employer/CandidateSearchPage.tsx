@@ -4,6 +4,7 @@ import { candidatesApi } from '@/api/endpoints';
 import { Button, EmptyState, Input, PageHeader, Pagination, Skeleton } from '@/components/ui';
 import { ErrorState } from '@/components/feedback';
 import { CandidateSummary, SaveToPoolButton } from './CandidateCard';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 interface Filters {
   skills: string;
@@ -13,6 +14,7 @@ interface Filters {
 const EMPTY: Filters = { skills: '', role: '', location: '' };
 
 export default function CandidateSearchPage() {
+  useDocumentTitle("Buscar talentos");
   const [draft, setDraft] = useState<Filters>(EMPTY);
   const [filters, setFilters] = useState<Filters>(EMPTY);
   const [page, setPage] = useState(1);

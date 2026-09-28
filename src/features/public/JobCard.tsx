@@ -2,7 +2,8 @@ import { Link } from 'react-router';
 import type { Job } from '@/api/types';
 import { Badge } from '@/components/ui';
 import { SafeText } from '@/components/feedback';
-import { AccessibilityIcon, BriefcaseIcon, MapPinIcon, MonitorIcon } from '@/components/icons';
+import { AccessibilityIcon, BriefcaseIcon, HeartIcon, MapPinIcon, MonitorIcon } from '@/components/icons';
+import { toggleSavedJob, useSavedJobs } from '@/lib/savedJobs';
 import { CONTRACT_LABEL, WORK_MODEL_LABEL, relativeDate } from '@/lib/format';
 import { decodeEntities, safeAssetUrl } from '@/lib/safe';
 
@@ -33,6 +34,7 @@ export function JobCard({ job }: { job: Job }) {
   const created = new Date(job.created_at).getTime();
   const isNew = !Number.isNaN(created) && Date.now() - created < NEW_JOB_MS;
   const rel = relativeDate(job.created_at);
+  const saved = useSavedJobs().some((s) => s.id === job.id);
   return (
     <article className="group relative grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 p-5 transition-colors hover:bg-surface-2 focus-within:bg-surface-2 sm:grid-cols-[auto_1fr_auto] sm:gap-x-6 sm:p-6">
       <CompanyLogo name={company} url={job.employer?.company_profile?.logo_url} size={48} />
@@ -81,6 +83,22 @@ export function JobCard({ job }: { job: Job }) {
         )}
         <span className="whitespace-nowrap text-xs text-muted sm:mt-1">Publicada {/^\d/.test(rel) ? `em ${rel}` : rel}</span>
       </div>
+      <SaveJobButton job={job} company={company} saved={saved} />
     </article>
+  );
+}
+
+/** Coração para salvar a vaga. Fica acima do link do card (z-10) para não abrir a vaga ao clicar. */
+export function SaveJobButton({ job, company, saved, className }: { job: Job; company: string; saved: boolean; className?: string }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={saved}
+      aria-label={saved ? 'Remover das vagas salvas' : 'Salvar vaga'}
+      onClick={() => toggleSavedJob({ id: job.id, title: decodeEntities(job.title), company: decodeEntities(company), address: decodeEntities(job.address) })}
+      className={className ?? 'absolute right-3 top-3 z-10 flex size-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-primary-soft hover:text-primary sm:right-4 sm:top-4'}
+    >
+      <HeartIcon size={20} filled={saved} className={saved ? 'text-primary' : undefined} />
+    </button>
   );
 }

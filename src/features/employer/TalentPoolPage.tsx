@@ -6,8 +6,10 @@ import { Button, ConfirmDialog, EmptyState, PageHeader, Pagination, Skeleton } f
 import { ErrorState, SafeText, useToast } from '@/components/feedback';
 import { formatDate } from '@/lib/format';
 import { CandidateSummary } from './CandidateCard';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 export default function TalentPoolPage() {
+  useDocumentTitle("Banco de talentos");
   const qc = useQueryClient();
   const toast = useToast();
   const [page, setPage] = useState(1);

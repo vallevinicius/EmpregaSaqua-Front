@@ -150,6 +150,17 @@ export interface SavedCandidate {
   candidate?: { id: string; email: string; candidate_profile?: CandidateProfile | null };
 }
 
+export interface JobAlert {
+  id: string;
+  candidate_id: string;
+  keyword: string | null;
+  address: string | null;
+  work_model: WorkModel | null;
+  contract_type: ContractType | null;
+  is_pcd: boolean;
+  created_at: string;
+}
+
 export interface AdminAnalytics {
   total_users: number;
   total_companies: number;

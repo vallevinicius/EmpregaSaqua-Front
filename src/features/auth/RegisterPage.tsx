@@ -12,6 +12,7 @@ import { BuildingIcon, UserIcon } from '@/components/icons';
 import { formatCnpj } from '@/lib/format';
 import { onlyDigits } from '@/lib/safe';
 import { AuthShell } from './AuthShell';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 /**
  * Política de senha mais forte que o back (que só exige 6 chars). 72 é o limite efetivo do bcrypt.
@@ -70,6 +71,7 @@ const EMPTY: Omit<Values, 'role'> = {
 };
 
 export default function RegisterPage() {
+  useDocumentTitle("Cadastre-se");
   const { register: registerUser } = useAuthActions();
   const navigate = useNavigate();
   // `?tipo=empresa` (links "Para empresas") pré-seleciona a conta de empresa.

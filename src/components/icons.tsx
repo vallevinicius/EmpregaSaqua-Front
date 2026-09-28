@@ -1,6 +1,8 @@
 import {
   ArrowLeft,
   ArrowRight,
+  Bell,
+  BellSlash,
   Briefcase,
   Buildings,
   CalendarBlank,
@@ -15,6 +17,7 @@ import {
   FileText,
   Funnel,
   GraduationCap,
+  Heart,
   IdentificationCard,
   ImageSquare,
   List,
@@ -45,11 +48,11 @@ import {
  * Os nomes locais isolam o resto do código da biblioteca. Decorativos por padrão (aria-hidden).
  * `strokeWidth > 2` vira peso "bold" (ex.: check dentro de bolinha pequena).
  */
-type IconProps = Omit<PhosphorProps, 'weight'> & { strokeWidth?: number };
+type IconProps = Omit<PhosphorProps, 'weight'> & { strokeWidth?: number; filled?: boolean };
 
 function wrap(Glyph: PhosphorIcon) {
-  return function Icon({ size = 18, strokeWidth, ...rest }: IconProps) {
-    return <Glyph size={size} weight={strokeWidth && strokeWidth > 2 ? 'bold' : 'regular'} aria-hidden {...rest} />;
+  return function Icon({ size = 18, strokeWidth, filled, ...rest }: IconProps) {
+    return <Glyph size={size} weight={filled ? 'fill' : strokeWidth && strokeWidth > 2 ? 'bold' : 'regular'} aria-hidden {...rest} />;
   };
 }
 
@@ -90,3 +93,6 @@ export const PhoneIcon = wrap(Phone);
 export const SparkleIcon = wrap(Sparkle);
 export const StarIcon = wrap(Star);
 export const TrashIcon = wrap(Trash);
+export const HeartIcon = wrap(Heart);
+export const BellIcon = wrap(Bell);
+export const BellSlashIcon = wrap(BellSlash);

@@ -5,16 +5,18 @@ import { chatApi } from '@/api/endpoints';
 import type { ChatMessage, ChatRoomSummary } from '@/api/types';
 import { useSession } from '@/auth/useAuth';
 import { Alert, Badge, Button, EmptyState, PageHeader, Spinner, Textarea, cx } from '@/components/ui';
-import { ErrorState, SafeText, isPendingEndpoint } from '@/components/feedback';
+import { ErrorState, SafeText } from '@/components/feedback';
 import { formatTime, relativeDate } from '@/lib/format';
 import { chatLink, parseChatTarget, type ChatTarget } from './chatLink';
 import { useChatSocket } from './useChatSocket';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 const MAX_LEN = 2000;
 // Espelha o limite do gateway (5 msgs / 10s) para dar feedback antes de o back rejeitar.
 const RATE = { max: 5, windowMs: 10_000 };
 
 export default function ChatPage() {
+  useDocumentTitle("Mensagens");
   const session = useSession();
   const qc = useQueryClient();
   const [sp, setSp] = useSearchParams();
@@ -83,13 +85,7 @@ export default function ChatPage() {
           {rooms.isPending ? (
             <div className="p-4"><Spinner label="Carregando conversas" /></div>
           ) : rooms.isError ? (
-            isPendingEndpoint(rooms.error) ? (
-              <p className="p-3 text-xs text-muted">
-                A lista de conversas depende de <code className="font-mono">GET /chat/rooms</code> (pendente no back). Abra uma conversa pelas candidaturas.
-              </p>
-            ) : (
-              <ErrorState error={rooms.error} onRetry={() => void rooms.refetch()} />
-            )
+            <ErrorState error={rooms.error} onRetry={() => void rooms.refetch()} />
           ) : rooms.data.length === 0 ? (
             <p className="p-3 text-sm text-muted">Nenhuma conversa ainda.</p>
           ) : (
@@ -126,7 +122,7 @@ export default function ChatPage() {
               roomId={roomId}
               messages={messages}
               myId={session?.user.id ?? ''}
-              historyPending={history.isError && isPendingEndpoint(history.error)}
+              historyPending={history.isError}
               historyLoading={history.isPending}
               socket={socket}
               target={target}
@@ -201,7 +197,7 @@ function Conversation({
   return (
     <>
       <div className="flex-1 overflow-y-auto p-4" aria-live="polite" aria-relevant="additions">
-        {historyPending && <p className="mb-3 text-center text-xs text-muted">Histórico indisponível (GET /chat/room/:id/messages pendente no back). Mostrando apenas mensagens desta sessão.</p>}
+        {historyPending && <p className="mb-3 text-center text-xs text-muted">Não foi possível carregar o histórico desta conversa. Mostrando apenas as mensagens desta sessão.</p>}
         {historyLoading && <div className="flex justify-center"><Spinner /></div>}
         {messages.length === 0 && !historyLoading && <p className="py-10 text-center text-sm text-muted">Nenhuma mensagem ainda. Diga olá!</p>}
         <ol className="flex flex-col gap-2">

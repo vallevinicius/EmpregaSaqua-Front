@@ -17,6 +17,7 @@ import type {
   Education,
   Experience,
   Job,
+  JobAlert,
   JobApplication,
   JobStatus,
   Paginated,
@@ -29,8 +30,7 @@ import type {
 
 /**
  * Camada única de acesso à API. Componentes nunca chamam fetch direto.
- * Endpoints marcados com @pending NÃO existem no back hoje — o contrato está em BACKEND_CONTRACT.md.
- * Enquanto não existirem, retornam 404 e a UI mostra <PendingEndpoint/>.
+ * Endpoints marcados com @pending NÃO existem no back — o contrato está em BACKEND_CONTRACT.md. (Hoje não há nenhum.)
  */
 
 // ---------- mapeadores defensivos ----------
@@ -125,11 +125,10 @@ export const jobsApi = {
     const res = await request<Paginated<Job>>('/jobs', { query: { ...filters }, auth: false, signal });
     return { ...res, data: res.data.map(sanitizeJob) };
   },
-  get: async (id: string, signal?: AbortSignal) => sanitizeJob(await request<Job>(`/jobs/${seg(id)}`, { auth: false, signal })),
+  get: async (id: string, signal?: AbortSignal) => sanitizeJob(await request<Job>(`/jobs/${seg(id)}`, { signal })),
   create: (input: JobInput) => request<Job>('/jobs', { method: 'POST', body: input }),
   update: (id: string, input: Partial<JobInput>) => request<Job>(`/jobs/${seg(id)}`, { method: 'PATCH', body: input }),
   remove: (id: string) => request<{ message: string }>(`/jobs/${seg(id)}`, { method: 'DELETE' }),
-  /** @pending GET /jobs/mine — vagas do employer em qualquer status. */
   mine: async (params: { page: number; limit: number; status?: JobStatus | '' }, signal?: AbortSignal) => {
     const res = await request<Paginated<Job>>('/jobs/mine', { query: params, signal });
     return { ...res, data: res.data.map(sanitizeJob) };
@@ -198,7 +197,12 @@ export const usersApi = {
   companyProfile: (signal?: AbortSignal) => request<CompanyProfile>('/users/company-profile', { signal }),
   updateCompanyProfile: (input: { nome_fantasia?: string; endereco?: string; telefone?: string; cnpj?: string }) =>
     request<CompanyProfile>('/users/company-profile', { method: 'PATCH', body: input }),
-  deleteAccount: () => request<void>('/users/account', { method: 'DELETE' }),
+  /** Não exclui nada ainda: manda um e-mail com link de confirmação (válido por 1h). */
+  requestAccountDeletion: () =>
+    request<{ message: string }>('/users/account/request-deletion', { method: 'POST' }),
+  /** Chamado pela página que lê o token da URL do e-mail. Exclusão é definitiva (hard delete + cascade). */
+  confirmAccountDeletion: (token: string) =>
+    request<{ message: string }>('/users/account/confirm-deletion', { method: 'POST', body: { token }, auth: false }),
 };
 
 // ---------- Uploads ----------
@@ -236,6 +240,22 @@ export const talentPoolApi = {
   remove: (id: string) => request<void>(`/talent-pool/${seg(id)}`, { method: 'DELETE' }),
 };
 
+// ---------- Job alerts ----------
+
+export interface JobAlertInput {
+  keyword?: string;
+  address?: string;
+  work_model?: WorkModel | '';
+  contract_type?: ContractType | '';
+  is_pcd?: boolean;
+}
+
+export const jobAlertsApi = {
+  create: (input: JobAlertInput) => request<JobAlert>('/job-alerts', { method: 'POST', body: input }),
+  mine: (signal?: AbortSignal) => request<JobAlert[]>('/job-alerts/mine', { signal }),
+  remove: (id: string) => request<void>(`/job-alerts/${seg(id)}`, { method: 'DELETE' }),
+};
+
 // ---------- Analytics ----------
 
 export const analyticsApi = {
@@ -256,15 +276,12 @@ export const adminApi = {
   updateUserRole: (id: string, role: Role) =>
     request<unknown>(`/admin/users/${seg(id)}/role`, { method: 'PATCH', body: { role } }),
   deleteUser: (id: string) => request<unknown>(`/admin/users/${seg(id)}`, { method: 'DELETE' }),
-  /** @pending GET /admin/jobs */
   listJobs: async (params: { status?: JobStatus; page: number; limit: number }, signal?: AbortSignal) => {
     const res = await request<Paginated<Job>>('/admin/jobs', { query: params, signal });
     return { ...res, data: res.data.map(sanitizeJob) };
   },
-  /** @pending GET /admin/companies */
   listCompanies: (params: { status?: VerificationStatus; page: number; limit: number }, signal?: AbortSignal) =>
     request<Paginated<AdminCompany>>('/admin/companies', { query: params, signal }),
-  /** @pending GET /admin/users */
   listUsers: (params: { role?: Role | ''; page: number; limit: number }, signal?: AbortSignal) =>
     request<Paginated<AdminUser>>('/admin/users', { query: params, signal }),
 };
@@ -274,9 +291,7 @@ export const adminApi = {
 export const chatApi = {
   unreadCount: (signal?: AbortSignal) => request<{ count: number }>('/chat/unread-count', { signal }),
   markRead: (roomId: string) => request<{ status: string }>(`/chat/room/${seg(roomId)}/read`, { method: 'PATCH' }),
-  /** @pending GET /chat/rooms */
   rooms: (signal?: AbortSignal) => request<ChatRoomSummary[]>('/chat/rooms', { signal }),
-  /** @pending GET /chat/room/:roomId/messages */
   messages: (roomId: string, signal?: AbortSignal) => request<ChatMessage[]>(`/chat/room/${seg(roomId)}/messages`, { signal }),
 };
 

@@ -6,10 +6,12 @@ import { Button, Card, EmptyState, Input, PageHeader, Pagination, Skeleton, cx }
 import { ErrorState, SafeText, useToast } from '@/components/feedback';
 import { CONTRACT_LABEL, WORK_MODEL_LABEL, formatDate } from '@/lib/format';
 import { UUID_RE } from './uuid';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 type Tab = 'jobs' | 'companies';
 
 export default function AdminModerationPage() {
+  useDocumentTitle("Moderação");
   const [tab, setTab] = useState<Tab>('jobs');
   return (
     <div>
@@ -64,7 +66,7 @@ function PendingJobs() {
       {q.isPending ? (
         <Skeleton className="h-40" />
       ) : q.isError ? (
-        <ErrorState error={q.error} onRetry={() => void q.refetch()} pending={{ endpoint: 'GET /admin/jobs?status=PENDING', feature: 'Fila de vagas pendentes' }} />
+        <ErrorState error={q.error} onRetry={() => void q.refetch()} />
       ) : q.data.data.length === 0 ? (
         <EmptyState title="Nenhuma vaga pendente" />
       ) : (
@@ -99,7 +101,7 @@ function PendingCompanies() {
       {q.isPending ? (
         <Skeleton className="h-40" />
       ) : q.isError ? (
-        <ErrorState error={q.error} onRetry={() => void q.refetch()} pending={{ endpoint: 'GET /admin/companies?status=PENDING', feature: 'Fila de empresas pendentes' }} />
+        <ErrorState error={q.error} onRetry={() => void q.refetch()} />
       ) : q.data.data.length === 0 ? (
         <EmptyState title="Nenhuma empresa pendente" />
       ) : (

@@ -1,19 +1,22 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { candidatesApi, usersApi, type CandidateProfileInput } from '@/api/endpoints';
-import type { CandidateProfile } from '@/api/types';
-import { useAuthActions, useSession } from '@/auth/useAuth';
-import { Button, Card, CardSectionTitle, ConfirmDialog, Field, Input, PageHeader, PageLoader, Textarea } from '@/components/ui';
-import { ApiErrorAlert, useToast } from '@/components/feedback';
+import { applicationsApi, candidatesApi, jobsApi, usersApi, type CandidateProfileInput } from '@/api/endpoints';
+import type { ApplicationStatus, CandidateProfile, Job } from '@/api/types';
+import { useSession } from '@/auth/useAuth';
+import { Badge, Button, Card, CardSectionTitle, ConfirmDialog, Field, Input, PageHeader, PageLoader, Skeleton, Textarea, buttonClass } from '@/components/ui';
+import { ApiErrorAlert, SafeText, useToast } from '@/components/feedback';
 import { CepLookup, StringListInput, cepToAddress } from '@/components/inputs';
 import { BriefcaseIcon, FileTextIcon, GraduationCapIcon, IdentificationCardIcon, SparkleIcon, TrashIcon } from '@/components/icons';
+import { APPLICATION_STATUS_LABEL, formatDate } from '@/lib/format';
 import { decodeEntities, onlyDigits } from '@/lib/safe';
 import { errorMessage } from '@/lib/http';
 import { ResumePreview } from './ResumePreview';
+import { profileCompleteness } from '@/lib/profile';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 const month = z.string().regex(/^\d{4}-\d{2}$/, 'Use o formato AAAA-MM.');
 const optionalMonth = z.union([month, z.literal('')]).optional();
@@ -79,6 +82,7 @@ function toValues(p: CandidateProfile): Values {
 }
 
 export default function CandidateProfilePage() {
+  useDocumentTitle("Meu currículo");
   const qc = useQueryClient();
   const toast = useToast();
   const session = useSession();
@@ -125,6 +129,9 @@ export default function CandidateProfilePage() {
         actions={<ResumeDownload />}
       />
       {profile.isError && <div className="mb-6"><ApiErrorAlert error={profile.error} /></div>}
+
+      <ProgressCard values={liveValues} />
+      <MyApplicationsCard />
 
       <div className="grid gap-8 lg:grid-cols-[1fr_24rem]">
         <form noValidate className="flex flex-col gap-6" onSubmit={form.handleSubmit((v) => save.mutate(v))}>
@@ -236,6 +243,98 @@ export default function CandidateProfilePage() {
   );
 }
 
+/** Barra de progresso do currículo: mostra o que falta e cresce enquanto a pessoa digita. */
+function ProgressCard({ values }: { values: Parameters<typeof profileCompleteness>[0] }) {
+  const { percent, missing } = profileCompleteness(values);
+  return (
+    <Card className="mb-8">
+      <div className="flex items-center justify-between gap-4">
+        <p className="font-bold">Seu currículo está {percent}% completo</p>
+        <span className="text-sm text-muted">{percent === 100 ? 'Tudo pronto!' : `Falta: ${missing.slice(0, 3).join(', ')}${missing.length > 3 ? '…' : ''}`}</span>
+      </div>
+      <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100} aria-label="Progresso do currículo">
+        <div className="h-full rounded-full bg-green transition-[width] duration-500" style={{ width: `${percent}%` }} />
+      </div>
+    </Card>
+  );
+}
+
+const STATUS_TONE: Record<ApplicationStatus, 'neutral' | 'primary' | 'success' | 'warning' | 'danger'> = {
+  APPLIED: 'neutral',
+  REVIEWING: 'primary',
+  INTERVIEW: 'warning',
+  HIRED: 'success',
+  REJECTED: 'danger',
+};
+const MAX_SHOWN = 4;
+
+/**
+ * Resumo das vagas em que a pessoa se candidatou, direto no perfil. A lista completa (com retirar
+ * candidatura e mensagem) continua em "Minhas candidaturas" — aqui é só um retrato rápido.
+ */
+function MyApplicationsCard() {
+  const apps = useQuery({ queryKey: ['applications', 'mine'], queryFn: ({ signal }) => applicationsApi.mine(signal) });
+
+  // GET /applications não inclui a vaga: buscamos cada uma (cacheadas, mesma queryKey da lista completa).
+  const jobIds = [...new Set((apps.data ?? []).map((a) => a.job_id))];
+  const jobs = useQueries({
+    queries: jobIds.map((id) => ({
+      queryKey: ['jobs', 'detail', id],
+      queryFn: ({ signal }: { signal: AbortSignal }) => jobsApi.get(id, signal),
+      staleTime: 5 * 60_000,
+      retry: false,
+    })),
+  });
+  const jobById = new Map<string, Job>();
+  jobs.forEach((q, i) => {
+    const id = jobIds[i];
+    if (q.data && id) jobById.set(id, q.data);
+  });
+
+  if (apps.isPending) return <Skeleton className="mb-8 h-32" />;
+  if (apps.isError || apps.data.length === 0) return null;
+
+  const list = [...apps.data].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const shown = list.slice(0, MAX_SHOWN);
+
+  return (
+    <Card className="mb-8">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <CardSectionTitle icon={<BriefcaseIcon size={18} />} title="Vagas em que você se candidatou" className="mb-0" />
+        {list.length > MAX_SHOWN && (
+          <Link to="/candidato/candidaturas" className="text-sm font-semibold text-primary hover:underline">Ver todas ({list.length})</Link>
+        )}
+      </div>
+      <ul className="flex flex-col divide-y divide-border">
+        {shown.map((app) => {
+          const job = jobById.get(app.job_id);
+          return (
+            <li key={app.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+              <div className="min-w-0">
+                {job ? (
+                  <Link to={`/vagas/${encodeURIComponent(job.id)}`} className="font-semibold hover:text-primary hover:underline">
+                    <SafeText>{job.title}</SafeText>
+                  </Link>
+                ) : (
+                  <span className="font-semibold text-muted">Vaga indisponível</span>
+                )}
+                <p className="text-sm text-muted">
+                  {job?.employer?.company_profile?.nome_fantasia && <><SafeText>{job.employer.company_profile.nome_fantasia}</SafeText> · </>}
+                  Enviada em {formatDate(app.created_at)}
+                </p>
+              </div>
+              <Badge tone={STATUS_TONE[app.status]}>{APPLICATION_STATUS_LABEL[app.status]}</Badge>
+            </li>
+          );
+        })}
+      </ul>
+      {list.length <= MAX_SHOWN && (
+        <Link to="/candidato/candidaturas" className={buttonClass('secondary', 'sm', 'mt-4')}>Ver detalhes e gerenciar</Link>
+      )}
+    </Card>
+  );
+}
+
 function EmptyHint({ text }: { text: string }) {
   return <p className="mb-4 text-sm text-muted">{text}</p>;
 }
@@ -271,36 +370,51 @@ function ResumeDownload() {
 }
 
 export function DangerZone() {
-  const { logout } = useAuthActions();
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
-  const del = useMutation({
-    mutationFn: () => usersApi.deleteAccount(),
-    onSuccess: () => {
-      logout();
-      navigate('/', { replace: true });
-    },
+  const req = useMutation({
+    mutationFn: () => usersApi.requestAccountDeletion(),
   });
   return (
     <Card className="mt-10 border-danger/40">
       <h2 className="font-bold text-danger">Excluir conta</h2>
-      <p className="mt-1 text-sm text-muted">Seus dados pessoais serão anonimizados (LGPD). Essa ação não pode ser desfeita.</p>
+      <p className="mt-1 text-sm text-muted">
+        Excluímos permanentemente todos os seus dados do site (perfil, vagas, candidaturas, mensagens). Essa ação não pode ser desfeita.
+      </p>
       <Button variant="danger" className="mt-4" onClick={() => setOpen(true)}>Excluir minha conta</Button>
       <ConfirmDialog
         open={open}
         title="Excluir sua conta?"
-        description='Digite "EXCLUIR" para confirmar.'
-        confirmLabel="Excluir definitivamente"
-        loading={del.isPending}
-        onConfirm={() => confirmText === 'EXCLUIR' && del.mutate()}
+        description={
+          req.isSuccess
+            ? undefined
+            : 'Digite "EXCLUIR" para receber um e-mail de confirmação. Nada é apagado até você clicar no link do e-mail.'
+        }
+        confirmLabel={req.isSuccess ? 'Fechar' : 'Enviar e-mail de confirmação'}
+        loading={req.isPending}
+        onConfirm={() => {
+          if (req.isSuccess) {
+            setOpen(false);
+            setConfirmText('');
+            req.reset();
+          } else if (confirmText === 'EXCLUIR') {
+            req.mutate();
+          }
+        }}
         onClose={() => {
           setOpen(false);
           setConfirmText('');
+          req.reset();
         }}
       >
-        <Input aria-label="Confirmação" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} autoComplete="off" />
-        {del.isError && <p className="mt-2 text-xs text-danger">{errorMessage(del.error)}</p>}
+        {req.isSuccess ? (
+          <p className="text-sm text-fg">{req.data.message}</p>
+        ) : (
+          <>
+            <Input aria-label="Confirmação" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} autoComplete="off" />
+            {req.isError && <p className="mt-2 text-xs text-danger">{errorMessage(req.error)}</p>}
+          </>
+        )}
       </ConfirmDialog>
     </Card>
   );

@@ -7,12 +7,14 @@ import { Badge, Button, Card, ConfirmDialog, EmptyState, Field, Input, PageHeade
 import { ErrorState, useToast } from '@/components/feedback';
 import { ROLE_LABEL, formatDate } from '@/lib/format';
 import { UUID_RE } from './uuid';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 const ROLES = Object.keys(ROLE_LABEL) as Role[];
 
 type Pending = { kind: 'role'; id: string; role: Role; label: string } | { kind: 'delete'; id: string; label: string };
 
 export default function AdminUsersPage() {
+  useDocumentTitle("Usuários");
   const session = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -60,7 +62,7 @@ export default function AdminUsersPage() {
       {q.isPending ? (
         <Skeleton className="h-60" />
       ) : q.isError ? (
-        <ErrorState error={q.error} onRetry={() => void q.refetch()} pending={{ endpoint: 'GET /admin/users', feature: 'Listagem de usuários' }} />
+        <ErrorState error={q.error} onRetry={() => void q.refetch()} />
       ) : q.data.data.length === 0 ? (
         <EmptyState title="Nenhum usuário" />
       ) : (

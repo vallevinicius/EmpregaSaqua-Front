@@ -7,6 +7,7 @@ import { JobsListPage } from '@/features/public/JobsListPage';
 
 // Code-splitting por área: candidato não baixa o bundle do admin e vice-versa.
 const ResumeBuilderPage = lazy(() => import('@/features/public/ResumeBuilderPage'));
+const SavedJobsPage = lazy(() => import('@/features/public/SavedJobsPage'));
 const JobDetailPage = lazy(() => import('@/features/public/JobDetailPage'));
 const LoginPage = lazy(() => import('@/features/auth/LoginPage'));
 const RegisterPage = lazy(() => import('@/features/auth/RegisterPage'));
@@ -24,6 +25,7 @@ const AdminModerationPage = lazy(() => import('@/features/admin/AdminModerationP
 const AdminUsersPage = lazy(() => import('@/features/admin/AdminUsersPage'));
 const ChatPage = lazy(() => import('@/features/chat/ChatPage'));
 const NotFoundPage = lazy(() => import('@/features/public/NotFoundPage'));
+const ConfirmAccountDeletionPage = lazy(() => import('@/features/public/ConfirmAccountDeletionPage'));
 
 export function App() {
   return (
@@ -32,9 +34,11 @@ export function App() {
         <Route element={<AppLayout />}>
           <Route index element={<JobsListPage />} />
           <Route path="vagas/:id" element={<JobDetailPage />} />
+          <Route path="vagas-salvas" element={<SavedJobsPage />} />
           <Route path="curriculo" element={<ResumeBuilderPage />} />
           <Route path="entrar" element={<RedirectIfAuthed><LoginPage /></RedirectIfAuthed>} />
           <Route path="cadastro" element={<RedirectIfAuthed><RegisterPage /></RedirectIfAuthed>} />
+          <Route path="excluir-conta/confirmar" element={<ConfirmAccountDeletionPage />} />
 
           <Route path="candidato">
             <Route path="candidaturas" element={<RequireAuth roles={['JOB_SEEKER']}><MyApplicationsPage /></RequireAuth>} />

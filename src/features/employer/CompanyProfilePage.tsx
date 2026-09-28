@@ -13,6 +13,7 @@ import { IMAGE_TYPES, decodeEntities, isPdfFile, onlyDigits } from '@/lib/safe';
 import { errorMessage } from '@/lib/http';
 import { DangerZone } from '@/features/candidate/CandidateProfilePage';
 import { CompanyLogo } from '@/features/public/JobCard';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 const schema = z.object({
   nome_fantasia: z.string().trim().min(2, 'Informe o nome da empresa.').max(150),
@@ -41,6 +42,7 @@ const MAX_LOGO = 2 * 1024 * 1024;
 const MAX_DOC = 5 * 1024 * 1024;
 
 export default function CompanyProfilePage() {
+  useDocumentTitle("Perfil da empresa");
   const qc = useQueryClient();
   const toast = useToast();
   const profile = useQuery({ queryKey: ['company', 'me'], queryFn: ({ signal }) => usersApi.companyProfile(signal), retry: false });

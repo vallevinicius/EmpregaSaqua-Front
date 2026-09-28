@@ -13,6 +13,8 @@ import { CepLookup, StringListInput, cepToAddress } from '@/components/inputs';
 import { CONTRACT_LABEL, WORK_MODEL_LABEL } from '@/lib/format';
 import { decodeEntities, onlyDigits } from '@/lib/safe';
 import { ApiError } from '@/lib/http';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { JOB_TEMPLATES } from './jobTemplates';
 
 const WORK_MODELS = Object.keys(WORK_MODEL_LABEL) as [WorkModel, ...WorkModel[]];
 const CONTRACTS = Object.keys(CONTRACT_LABEL) as [ContractType, ...ContractType[]];
@@ -113,6 +115,7 @@ function toInput(v: Values, isEdit: boolean): JobInput {
 }
 
 export default function JobFormPage() {
+  useDocumentTitle("Publicar vaga");
   const { id } = useParams();
   const isEdit = !!id;
   const session = useSession();
@@ -135,7 +138,7 @@ export default function JobFormPage() {
     mutationFn: (v: Values) => (isEdit ? jobsApi.update(id!, toInput(v, true)) : jobsApi.create(toInput(v, false))),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['jobs'] });
-      toast(isEdit ? 'Vaga atualizada.' : 'Vaga enviada para análise.');
+      toast(isEdit ? (existing.data?.status === 'ACTIVE' ? 'Vaga atualizada. Ela passa por nova análise antes de voltar ao ar.' : 'Vaga atualizada.') : 'Vaga enviada para análise.');
       navigate('/empresa/vagas');
     },
     onError: (e) => {
@@ -160,6 +163,27 @@ export default function JobFormPage() {
         </div>
       )}
       <form noValidate className="flex flex-col gap-6" onSubmit={form.handleSubmit((v) => save.mutate(v))}>
+        {!isEdit && (
+          <Card>
+            <h2 className="font-semibold">Comece com um modelo</h2>
+            <p className="mt-1 text-sm text-muted">Preenche o título, a descrição, a jornada e os requisitos. Você edita o que quiser depois.</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {JOB_TEMPLATES.map((t) => (
+                <Button
+                  key={t.name}
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    const { name: _name, ...fields } = t;
+                    (Object.keys(fields) as (keyof typeof fields)[]).forEach((k) => form.setValue(k, fields[k] as never, { shouldDirty: true, shouldValidate: true }));
+                  }}
+                >
+                  {t.name}
+                </Button>
+              ))}
+            </div>
+          </Card>
+        )}
         <Card>
           <h2 className="mb-4 font-semibold">Informações principais</h2>
           <div className="grid gap-4 sm:grid-cols-2">

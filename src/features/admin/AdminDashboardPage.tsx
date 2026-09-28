@@ -4,8 +4,10 @@ import { analyticsApi } from '@/api/endpoints';
 import { PageHeader, Skeleton, buttonClass } from '@/components/ui';
 import { ErrorState } from '@/components/feedback';
 import { StatTile } from '@/components/charts';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 export default function AdminDashboardPage() {
+  useDocumentTitle("Painel administrativo");
   const q = useQuery({ queryKey: ['analytics', 'admin'], queryFn: ({ signal }) => analyticsApi.admin(signal), refetchInterval: 60_000 });
   return (
     <div>

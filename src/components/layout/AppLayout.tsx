@@ -22,10 +22,12 @@ const NAV: Record<Role | 'PUBLIC', NavItem[]> = {
   PUBLIC: [
     { to: '/', label: 'Vagas', end: true },
     { to: '/curriculo', label: 'Crie seu currículo' },
+    { to: '/vagas-salvas', label: 'Vagas salvas' },
   ],
   JOB_SEEKER: [
     { to: '/', label: 'Vagas', end: true },
     { to: '/candidato/candidaturas', label: 'Minhas candidaturas' },
+    { to: '/vagas-salvas', label: 'Vagas salvas' },
     { to: '/candidato/perfil', label: 'Meu currículo' },
     { to: '/mensagens', label: 'Mensagens' },
   ],
@@ -127,12 +129,13 @@ export function AppLayout() {
         Pular para o conteúdo
       </a>
       <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:px-6">
-          <Logo />
-          <nav aria-label="Principal" className="ml-6 hidden items-center lg:flex">
+        <div className="mx-auto grid h-16 max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 sm:px-6">
+          <div className="justify-self-start"><Logo /></div>
+          {/* Colunas das pontas com o mesmo peso (1fr): o nav fica centralizado de verdade no header, não só "colado" no logo. */}
+          <nav aria-label="Principal" className="hidden items-center justify-self-center lg:flex">
             {items.map((i) => navLink(i))}
           </nav>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center justify-self-end gap-2">
             {session ? (
               <>
                 <div className="hidden items-center gap-3 md:flex">

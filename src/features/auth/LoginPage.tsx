@@ -9,6 +9,7 @@ import { Button, Field, Input } from '@/components/ui';
 import { ApiErrorAlert } from '@/components/feedback';
 import { ApiError } from '@/lib/http';
 import { AuthShell } from './AuthShell';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 const schema = z.object({
   email: z.email('E-mail inválido.').max(254),
@@ -17,6 +18,7 @@ const schema = z.object({
 type Values = z.infer<typeof schema>;
 
 export default function LoginPage() {
+  useDocumentTitle("Entrar");
   const { login } = useAuthActions();
   const navigate = useNavigate();
   const location = useLocation();
