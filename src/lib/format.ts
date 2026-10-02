@@ -1,4 +1,18 @@
-import type { ApplicationStatus, ContractType, JobStatus, Role, VerificationStatus, WorkModel } from '@/api/types';
+import type { ApplicationStatus, ContractType, JobArea, JobStatus, Role, VerificationStatus, WorkModel } from '@/api/types';
+
+export const JOB_AREA_LABEL: Record<JobArea, string> = {
+  ADMINISTRACAO: 'Administração',
+  TI: 'Tecnologia da Informação',
+  SAUDE: 'Saúde',
+  EDUCACAO: 'Educação',
+  COMERCIO_VENDAS: 'Comércio e Vendas',
+  ALIMENTACAO: 'Alimentação',
+  CONSTRUCAO: 'Construção',
+  LIMPEZA_SERVICOS_GERAIS: 'Limpeza e Serviços Gerais',
+  LOGISTICA_TRANSPORTE: 'Logística e Transporte',
+  TURISMO_HOTELARIA: 'Turismo e Hotelaria',
+  OUTROS: 'Outros',
+};
 
 export const WORK_MODEL_LABEL: Record<WorkModel, string> = {
   ON_SITE: 'Presencial',

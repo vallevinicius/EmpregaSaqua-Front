@@ -5,19 +5,22 @@ import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { jobsApi, type JobInput } from '@/api/endpoints';
-import type { ContractType, Job, WorkModel } from '@/api/types';
+import type { ContractType, Job, JobArea, WorkModel } from '@/api/types';
 import { useSession } from '@/auth/useAuth';
 import { Alert, Button, Card, Checkbox, Field, Input, PageHeader, PageLoader, Select, Textarea } from '@/components/ui';
 import { ApiErrorAlert, ErrorState, SafeText, useToast } from '@/components/feedback';
 import { CepLookup, StringListInput, cepToAddress } from '@/components/inputs';
-import { CONTRACT_LABEL, WORK_MODEL_LABEL } from '@/lib/format';
+import { CONTRACT_LABEL, JOB_AREA_LABEL, WORK_MODEL_LABEL } from '@/lib/format';
 import { decodeEntities, onlyDigits } from '@/lib/safe';
+import { maskCurrencyInput } from '@/lib/currency';
 import { ApiError } from '@/lib/http';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { JOB_TEMPLATES } from './jobTemplates';
+import type { Control, FieldErrors } from 'react-hook-form';
 
 const WORK_MODELS = Object.keys(WORK_MODEL_LABEL) as [WorkModel, ...WorkModel[]];
 const CONTRACTS = Object.keys(CONTRACT_LABEL) as [ContractType, ...ContractType[]];
+const AREAS = Object.keys(JOB_AREA_LABEL) as [JobArea, ...JobArea[]];
 const list = z.array(z.string().trim().min(1).max(150)).max(20);
 
 /** Limites espelham CreateJobDto do back (MaxLength, ArrayMaxSize, Matches). */
@@ -31,6 +34,7 @@ const schema = z.object({
   is_pcd: z.boolean(),
   work_model: z.enum(WORK_MODELS),
   contract_type: z.enum(CONTRACTS),
+  area: z.enum(AREAS, { message: 'Escolha a área da vaga.' }),
   mandatory_qualifications: list,
   differential_qualifications: list,
   benefits: list,
@@ -41,7 +45,15 @@ const schema = z.object({
   contact_email: z.union([z.literal(''), z.email('E-mail inválido.')]),
   replace_questions: z.boolean(),
   questions: z
-    .array(z.object({ question_text: z.string().trim().min(5, 'Mínimo de 5 caracteres.').max(300), expected_answer: z.enum(['yes', 'no']) }))
+    .array(
+      z.object({
+        question_text: z.string().trim().min(5, 'Mínimo de 5 caracteres.').max(300),
+        options: z
+          .array(z.object({ option_text: z.string().trim().min(1, 'Informe o texto da opção.').max(150), eliminates: z.boolean() }))
+          .min(2, 'Cada pergunta precisa de pelo menos 2 opções.')
+          .max(6),
+      }),
+    )
     .max(10),
 });
 type Values = z.infer<typeof schema>;
@@ -56,6 +68,7 @@ const EMPTY: Values = {
   is_pcd: false,
   work_model: 'ON_SITE',
   contract_type: 'CLT',
+  area: '' as JobArea,
   mandatory_qualifications: [],
   differential_qualifications: [],
   benefits: [],
@@ -78,13 +91,14 @@ function toValues(job: Job): Values {
     is_pcd: job.is_pcd,
     work_model: job.work_model,
     contract_type: job.contract_type,
+    area: job.area ?? ('' as JobArea),
     mandatory_qualifications: job.mandatory_qualifications.map(decodeEntities),
     differential_qualifications: job.differential_qualifications.map(decodeEntities),
     benefits: job.benefits.map(decodeEntities),
     expires_at: job.expires_at ? job.expires_at.slice(0, 10) : '',
     contact_whatsapp: job.contact_whatsapp ?? '',
     contact_email: job.contact_email ?? '',
-    // O gabarito (expected_answer) não chega ao front; editar perguntas exige redefini-las.
+    // O gabarito (eliminates) não chega ao front; editar perguntas exige redefini-las.
     replace_questions: false,
     questions: [],
   };
@@ -101,6 +115,7 @@ function toInput(v: Values, isEdit: boolean): JobInput {
     is_pcd: v.is_pcd,
     work_model: v.work_model,
     contract_type: v.contract_type,
+    area: v.area,
     mandatory_qualifications: v.mandatory_qualifications,
     differential_qualifications: v.differential_qualifications,
     benefits: v.benefits,
@@ -109,9 +124,59 @@ function toInput(v: Values, isEdit: boolean): JobInput {
     contact_email: v.contact_email || undefined,
   };
   if (!isEdit || v.replace_questions) {
-    input.questions = v.questions.map((q) => ({ question_text: q.question_text, expected_answer: q.expected_answer === 'yes' }));
+    input.questions = v.questions.map((q) => ({
+      question_text: q.question_text,
+      options: q.options.map((o) => ({ option_text: o.option_text, eliminates: o.eliminates })),
+    }));
   }
   return input;
+}
+
+function QuestionOptionsField({
+  control,
+  register,
+  questionIndex,
+  errors,
+}: {
+  control: Control<Values>;
+  register: ReturnType<typeof useForm<Values>>['register'];
+  questionIndex: number;
+  errors: FieldErrors<Values>;
+}) {
+  const options = useFieldArray({ control, name: `questions.${questionIndex}.options` });
+  const optionsError = errors.questions?.[questionIndex]?.options;
+  const optionsErrorMessage = Array.isArray(optionsError) ? undefined : optionsError?.message;
+
+  return (
+    <div className="flex flex-col gap-2 sm:col-span-3">
+      <span className="text-sm font-medium">Opções de resposta</span>
+      {options.fields.map((opt, j) => (
+        <div key={opt.id} className="flex items-center gap-2">
+          <Input
+            maxLength={150}
+            placeholder={`Opção ${j + 1}`}
+            {...register(`questions.${questionIndex}.options.${j}.option_text`)}
+          />
+          <Checkbox label="Elimina" {...register(`questions.${questionIndex}.options.${j}.eliminates`)} />
+          <Button type="button" size="sm" variant="danger-ghost" disabled={options.fields.length <= 2} onClick={() => options.remove(j)}>
+            Remover
+          </Button>
+        </div>
+      ))}
+      {optionsErrorMessage && <p className="text-sm text-danger">{optionsErrorMessage}</p>}
+      <div>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          disabled={options.fields.length >= 6}
+          onClick={() => options.append({ option_text: '', eliminates: false })}
+        >
+          Adicionar opção
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 export default function JobFormPage() {
@@ -207,6 +272,14 @@ export default function JobFormPage() {
                 </Select>
               )}
             </Field>
+            <Field label="Área da vaga" error={errors.area?.message} required hint="Candidatos com área de atuação diferente não conseguem se candidatar.">
+              {({ id: fid }) => (
+                <Select id={fid} invalid={!!errors.area} {...form.register('area')}>
+                  <option value="" disabled>Selecione...</option>
+                  {AREAS.map((a) => <option key={a} value={a}>{JOB_AREA_LABEL[a]}</option>)}
+                </Select>
+              )}
+            </Field>
             <Field label="Local de trabalho" error={errors.address?.message} required className="sm:col-span-2">
               {({ id: fid, invalid }) => <Input id={fid} maxLength={150} invalid={invalid} {...form.register('address')} />}
             </Field>
@@ -214,8 +287,30 @@ export default function JobFormPage() {
             <Field label="Jornada" error={errors.work_schedule?.message} required>
               {({ id: fid, invalid }) => <Input id={fid} maxLength={100} placeholder="Ex.: 6x1, 08h às 17h" invalid={invalid} {...form.register('work_schedule')} />}
             </Field>
-            <Field label="Faixa salarial" error={errors.salary_range?.message}>
-              {({ id: fid, invalid }) => <Input id={fid} maxLength={100} placeholder="Ex.: R$ 1.800 a R$ 2.200" invalid={invalid} {...form.register('salary_range')} />}
+            <Field label="Faixa salarial" error={errors.salary_range?.message} hint='Ex.: digite o valor mínimo, depois escreva " a R$ 2.200,00" se quiser uma faixa.'>
+              {({ id: fid, invalid }) => (
+                <Controller
+                  control={form.control}
+                  name="salary_range"
+                  render={({ field }) => (
+                    <Input
+                      id={fid}
+                      maxLength={100}
+                      placeholder="Ex.: R$ 1.800,00"
+                      invalid={invalid}
+                      value={field.value}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Enquanto for só um número sendo digitado, formata como moeda. Ao digitar
+                        // "a" ou "até" (indicando faixa), para de mascarar e deixa o texto livre.
+                        const looksLikeRange = /\ba\b/i.test(value) || /até/i.test(value);
+                        field.onChange(looksLikeRange ? value : maskCurrencyInput(value));
+                      }}
+                      onBlur={field.onBlur}
+                    />
+                  )}
+                />
+              )}
             </Field>
             <div className="flex flex-col gap-2 sm:col-span-2">
               <Checkbox label="Exibir salário para candidatos" {...form.register('is_salary_visible')} />
@@ -242,7 +337,7 @@ export default function JobFormPage() {
 
         <Card>
           <h2 className="mb-1 font-semibold">Perguntas de triagem</h2>
-          <p className="mb-4 text-sm text-muted">Perguntas de sim/não. Candidatos que responderem diferente do esperado são automaticamente reprovados.</p>
+          <p className="mb-4 text-sm text-muted">Crie as opções de resposta e marque quais eliminam o candidato automaticamente.</p>
           {isEdit && (
             <div className="mb-4 flex flex-col gap-2">
               {existing.data?.questions?.length ? (
@@ -258,23 +353,32 @@ export default function JobFormPage() {
           {(!isEdit || replaceQuestions) && (
             <div className="flex flex-col gap-3">
               {questions.fields.map((f, i) => (
-                <div key={f.id} className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
-                  <Field label={`Pergunta ${i + 1}`} error={errors.questions?.[i]?.question_text?.message}>
+                <div key={f.id} className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-3">
+                  <Field label={`Pergunta ${i + 1}`} error={errors.questions?.[i]?.question_text?.message} className="sm:col-span-3">
                     {({ id: fid, invalid }) => <Input id={fid} maxLength={300} invalid={invalid} {...form.register(`questions.${i}.question_text`)} />}
                   </Field>
-                  <Field label="Resposta esperada">
-                    {({ id: fid }) => (
-                      <Select id={fid} {...form.register(`questions.${i}.expected_answer`)}>
-                        <option value="yes">Sim</option>
-                        <option value="no">Não</option>
-                      </Select>
-                    )}
-                  </Field>
-                  <Button variant="danger-ghost" onClick={() => questions.remove(i)}>Remover</Button>
+                  <QuestionOptionsField control={form.control} register={form.register} questionIndex={i} errors={errors} />
+                  <div className="sm:col-span-3">
+                    <Button type="button" variant="danger-ghost" onClick={() => questions.remove(i)}>Remover pergunta</Button>
+                  </div>
                 </div>
               ))}
               <div>
-                <Button size="sm" variant="secondary" disabled={questions.fields.length >= 10} onClick={() => questions.append({ question_text: '', expected_answer: 'yes' })}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={questions.fields.length >= 10}
+                  onClick={() =>
+                    questions.append({
+                      question_text: '',
+                      options: [
+                        { option_text: 'Sim', eliminates: false },
+                        { option_text: 'Não', eliminates: true },
+                      ],
+                    })
+                  }
+                >
                   Adicionar pergunta
                 </Button>
               </div>

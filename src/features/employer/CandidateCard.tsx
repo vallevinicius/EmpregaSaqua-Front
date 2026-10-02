@@ -1,9 +1,13 @@
 import { useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { talentPoolApi } from '@/api/endpoints';
 import type { CandidateProfile } from '@/api/types';
+import { useSession } from '@/auth/useAuth';
+import { chatLink } from '@/features/chat/chatLink';
 import { Button, ConfirmDialog, Textarea } from '@/components/ui';
 import { SafeParagraphs, SafeText, useToast } from '@/components/feedback';
+import { MessageIcon } from '@/components/icons';
 import { ApiError } from '@/lib/http';
 import { formatMonthYear, formatPhone } from '@/lib/format';
 import { whatsappLink } from '@/lib/safe';
@@ -81,6 +85,22 @@ export function CandidateSummary({ email, profile, extra, actions }: { email?: s
         </>
       )}
     </article>
+  );
+}
+
+/** Abre (ou cria) uma conversa direta com o candidato, sem precisar de uma vaga/candidatura. */
+export function MessageCandidateButton({ candidateId, size = 'sm' }: { candidateId: string; size?: 'sm' | 'md' }) {
+  const session = useSession();
+  const navigate = useNavigate();
+  if (!session) return null;
+  return (
+    <Button
+      size={size}
+      variant="secondary"
+      onClick={() => navigate(chatLink({ employerId: session.user.id, candidateId }))}
+    >
+      <MessageIcon size={14} /> Mensagem
+    </Button>
   );
 }
 

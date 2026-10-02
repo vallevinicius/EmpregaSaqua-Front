@@ -1,7 +1,7 @@
 /**
  * Tipos espelhando src/prisma/contract.prisma do back (snake_case, como a API devolve).
- * Campos sensíveis (password_hash, expected_answer, internal_notes) são deliberadamente
- * OMITIDOS: o front não deve depender deles nem propagá-los em estado.
+ * Campos sensíveis (password_hash, eliminates do QuestionOption, internal_notes) são
+ * deliberadamente OMITIDOS: o front não deve depender deles nem propagá-los em estado.
  */
 
 export type Role = 'JOB_SEEKER' | 'EMPLOYER' | 'ADMIN';
@@ -10,6 +10,18 @@ export type ApplicationStatus = 'APPLIED' | 'REVIEWING' | 'INTERVIEW' | 'HIRED' 
 export type WorkModel = 'ON_SITE' | 'HYBRID' | 'REMOTE';
 export type ContractType = 'CLT' | 'PJ' | 'INTERNSHIP' | 'FREELANCE' | 'APPRENTICE';
 export type VerificationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type JobArea =
+  | 'ADMINISTRACAO'
+  | 'TI'
+  | 'SAUDE'
+  | 'EDUCACAO'
+  | 'COMERCIO_VENDAS'
+  | 'ALIMENTACAO'
+  | 'CONSTRUCAO'
+  | 'LIMPEZA_SERVICOS_GERAIS'
+  | 'LOGISTICA_TRANSPORTE'
+  | 'TURISMO_HOTELARIA'
+  | 'OUTROS';
 
 export interface SessionUser {
   id: string;
@@ -48,9 +60,15 @@ export interface CompanyProfile {
   updated_at: string;
 }
 
+export interface QuestionOption {
+  id: string;
+  option_text: string;
+}
+
 export interface JobQuestion {
   id: string;
   question_text: string;
+  options: QuestionOption[];
 }
 
 export interface Job {
@@ -66,6 +84,7 @@ export interface Job {
   benefits: string[];
   work_model: WorkModel;
   contract_type: ContractType;
+  area?: JobArea | null;
   is_salary_visible: boolean;
   is_pcd: boolean;
   expires_at: string | null;
@@ -108,6 +127,9 @@ export interface CandidateProfile {
   telefone: string | null;
   habilidades: string | null;
   skills: string[];
+  languages: string[];
+  area?: JobArea | null;
+  avatar_url?: string | null;
   address: string | null;
   created_at: string;
   updated_at: string;
@@ -196,12 +218,17 @@ export interface ChatMessage {
   content: string;
   is_read: boolean;
   created_at: string;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
+  attachment_type?: 'image' | 'document' | null;
+  edited_at?: string | null;
+  deleted_at?: string | null;
 }
 
 /** Contrato proposto (endpoint pendente no back) — ver BACKEND_CONTRACT.md */
 export interface ChatRoomSummary {
   id: string;
-  job_id: string;
+  job_id: string | null;
   candidate_id: string;
   employer_id: string;
   job_title: string;

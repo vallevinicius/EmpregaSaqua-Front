@@ -18,10 +18,10 @@ export default function AdminDashboardPage() {
         <ErrorState error={q.error} onRetry={() => void q.refetch()} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatTile label="Vagas aguardando análise" value={q.data.pending_jobs} />
-          <StatTile label="Vagas ativas" value={q.data.active_jobs} />
-          <StatTile label="Empresas" value={q.data.total_companies} />
-          <StatTile label="Usuários" value={q.data.total_users} />
+          <Link to="/admin/moderacao" className="rounded-2xl transition-transform hover:scale-[1.02]"><StatTile label="Vagas aguardando análise" value={q.data.pending_jobs} /></Link>
+          <Link to="/admin/vagas" className="rounded-2xl transition-transform hover:scale-[1.02]"><StatTile label="Vagas ativas" value={q.data.active_jobs} /></Link>
+          <Link to="/admin/empresas" className="rounded-2xl transition-transform hover:scale-[1.02]"><StatTile label="Empresas" value={q.data.total_companies} /></Link>
+          <Link to="/admin/usuarios" className="rounded-2xl transition-transform hover:scale-[1.02]"><StatTile label="Usuários" value={q.data.total_users} /></Link>
         </div>
       )}
     </div>

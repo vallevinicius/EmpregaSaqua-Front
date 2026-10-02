@@ -1,18 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Link } from 'react-router';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { applicationsApi, candidatesApi, jobsApi, usersApi, type CandidateProfileInput } from '@/api/endpoints';
-import type { ApplicationStatus, CandidateProfile, Job } from '@/api/types';
+import { applicationsApi, candidatesApi, jobsApi, uploadsApi, usersApi, type CandidateProfileInput } from '@/api/endpoints';
+import type { ApplicationStatus, CandidateProfile, Job, JobArea } from '@/api/types';
 import { useSession } from '@/auth/useAuth';
-import { Badge, Button, Card, CardSectionTitle, ConfirmDialog, Field, Input, PageHeader, PageLoader, Skeleton, Textarea, buttonClass } from '@/components/ui';
+import { Badge, Button, Card, CardSectionTitle, ConfirmDialog, Field, Input, PageHeader, PageLoader, Select, Skeleton, Textarea, buttonClass } from '@/components/ui';
 import { ApiErrorAlert, SafeText, useToast } from '@/components/feedback';
 import { CepLookup, StringListInput, cepToAddress } from '@/components/inputs';
-import { BriefcaseIcon, FileTextIcon, GraduationCapIcon, IdentificationCardIcon, SparkleIcon, TrashIcon } from '@/components/icons';
-import { APPLICATION_STATUS_LABEL, formatDate } from '@/lib/format';
-import { decodeEntities, onlyDigits } from '@/lib/safe';
+import { BriefcaseIcon, CameraIcon, FileTextIcon, GraduationCapIcon, IdentificationCardIcon, SparkleIcon, TranslateIcon, TrashIcon } from '@/components/icons';
+import { APPLICATION_STATUS_LABEL, JOB_AREA_LABEL, formatDate } from '@/lib/format';
+import { IMAGE_TYPES, decodeEntities, onlyDigits, safeAssetUrl } from '@/lib/safe';
 import { errorMessage } from '@/lib/http';
 import { ResumePreview } from './ResumePreview';
 import { profileCompleteness } from '@/lib/profile';
@@ -30,6 +30,8 @@ const schema = z.object({
     .refine((v) => v === '' || /^\d{10,13}$/.test(onlyDigits(v)), 'Telefone com DDD (10 a 13 dígitos).'),
   address: z.string().trim().max(200),
   skills: z.array(z.string().trim().min(1).max(50)).max(30),
+  languages: z.array(z.string().trim().min(1).max(50)).max(20),
+  area: z.string(),
   experiences: z
     .array(
       z.object({
@@ -55,7 +57,7 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 
-const EMPTY: Values = { full_name: '', bio: '', telefone: '', address: '', skills: [], experiences: [], educations: [] };
+const EMPTY: Values = { full_name: '', bio: '', telefone: '', address: '', skills: [], languages: [], area: '', experiences: [], educations: [] };
 
 function toValues(p: CandidateProfile): Values {
   return {
@@ -64,6 +66,8 @@ function toValues(p: CandidateProfile): Values {
     telefone: p.telefone ?? '',
     address: decodeEntities(p.address),
     skills: (p.skills ?? []).map(decodeEntities),
+    languages: (p.languages ?? []).map(decodeEntities),
+    area: p.area ?? '',
     experiences: (p.experiences ?? []).map((e) => ({
       company: decodeEntities(e.company),
       role: decodeEntities(e.role),
@@ -108,6 +112,8 @@ export default function CandidateProfilePage() {
       if (dirtyFields.telefone) body.telefone = onlyDigits(v.telefone);
       if (dirtyFields.address) body.address = v.address;
       if (dirtyFields.skills) body.skills = v.skills;
+      if (dirtyFields.languages) body.languages = v.languages;
+      if (dirtyFields.area) body.area = (v.area || undefined) as JobArea | undefined;
       if (dirtyFields.experiences) body.experiences = v.experiences.map((e) => ({ ...e, end_date: e.end_date || undefined }));
       if (dirtyFields.educations) body.educations = v.educations.map((e) => ({ ...e, end_date: e.end_date || undefined }));
       return candidatesApi.updateProfile(body);
@@ -137,6 +143,7 @@ export default function CandidateProfilePage() {
         <form noValidate className="flex flex-col gap-6" onSubmit={form.handleSubmit((v) => save.mutate(v))}>
           <Card>
             <CardSectionTitle icon={<IdentificationCardIcon size={18} />} title="Sobre você" />
+            <AvatarUpload avatarUrl={profile.data?.avatar_url} />
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Nome completo" error={errors.full_name?.message} className="sm:col-span-2" required>
                 {({ id, describedBy, invalid }) => <Input id={id} maxLength={150} autoComplete="name" aria-describedby={describedBy} invalid={invalid} {...form.register('full_name')} />}
@@ -151,6 +158,14 @@ export default function CandidateProfilePage() {
                 {({ id, describedBy, invalid }) => <Input id={id} autoComplete="street-address" maxLength={200} aria-describedby={describedBy} invalid={invalid} {...form.register('address')} />}
               </Field>
               <CepLookup className="sm:col-span-2" onFound={(r) => form.setValue('address', cepToAddress(r), { shouldDirty: true, shouldValidate: true })} />
+              <Field label="Área de atuação" error={errors.area?.message} className="sm:col-span-2" hint="Vagas de outras áreas não vão aparecer como opção pra você se candidatar.">
+                {({ id }) => (
+                  <Select id={id} {...form.register('area')}>
+                    <option value="">Não informar (ver vagas de qualquer área)</option>
+                    {(Object.keys(JOB_AREA_LABEL) as JobArea[]).map((a) => <option key={a} value={a}>{JOB_AREA_LABEL[a]}</option>)}
+                  </Select>
+                )}
+              </Field>
             </div>
           </Card>
 
@@ -160,6 +175,15 @@ export default function CandidateProfilePage() {
               control={form.control}
               name="skills"
               render={({ field }) => <StringListInput value={field.value} onChange={field.onChange} placeholder="Ex.: Atendimento ao cliente" maxItems={30} maxLength={50} />}
+            />
+          </Card>
+
+          <Card>
+            <CardSectionTitle icon={<TranslateIcon size={18} />} title="Idiomas" />
+            <Controller
+              control={form.control}
+              name="languages"
+              render={({ field }) => <StringListInput value={field.value} onChange={field.onChange} placeholder="Ex.: Inglês - Intermediário" maxItems={20} maxLength={50} />}
             />
           </Card>
 
@@ -226,11 +250,13 @@ export default function CandidateProfilePage() {
           <ResumePreview
             email={session?.user.email ?? ''}
             fullName={liveValues.full_name || ''}
+            avatarUrl={profile.data?.avatar_url}
             values={{
               bio: liveValues.bio ?? '',
               telefone: liveValues.telefone ?? '',
               address: liveValues.address ?? '',
               skills: (liveValues.skills ?? []).filter((s): s is string => !!s),
+              languages: (liveValues.languages ?? []).filter((s): s is string => !!s),
               experiences: (liveValues.experiences ?? []).filter((e): e is Values['experiences'][number] => !!e?.company || !!e?.role),
               educations: (liveValues.educations ?? []).filter((e): e is Values['educations'][number] => !!e?.institution || !!e?.degree),
             }}
@@ -337,6 +363,57 @@ function MyApplicationsCard() {
 
 function EmptyHint({ text }: { text: string }) {
   return <p className="mb-4 text-sm text-muted">{text}</p>;
+}
+
+const MAX_AVATAR = 2 * 1024 * 1024;
+
+function AvatarUpload({ avatarUrl }: { avatarUrl?: string | null }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+
+  const upload = useMutation({
+    mutationFn: (f: File) => uploadsApi.avatar(f),
+    onSuccess: () => {
+      toast('Foto de perfil enviada.');
+      void qc.invalidateQueries({ queryKey: ['candidate', 'me'] });
+    },
+  });
+
+  const onChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    setLocalError(null);
+    if (!(IMAGE_TYPES as readonly string[]).includes(f.type)) return setLocalError('Use JPEG, PNG, WebP ou GIF.');
+    if (f.size > MAX_AVATAR) return setLocalError('A imagem deve ter no máximo 2MB.');
+    setPreview(URL.createObjectURL(f));
+    upload.mutate(f);
+  };
+
+  const shown = preview ?? safeAssetUrl(avatarUrl);
+
+  return (
+    <div className="mb-5 flex items-center gap-4">
+      {shown ? (
+        <img src={shown} alt="Foto de perfil" className="size-16 rounded-full border border-border object-cover" />
+      ) : (
+        <span className="flex size-16 items-center justify-center rounded-full bg-surface-2 text-muted"><IdentificationCardIcon size={28} /></span>
+      )}
+      <div>
+        <input ref={inputRef} type="file" accept={IMAGE_TYPES.join(',')} className="hidden" onChange={onChange} tabIndex={-1} aria-hidden />
+        <Button type="button" variant="secondary" size="sm" onClick={() => inputRef.current?.click()} disabled={upload.isPending}>
+          <CameraIcon size={14} /> {upload.isPending ? 'Enviando…' : 'Alterar foto'}
+        </Button>
+        {localError && <p className="mt-1.5 text-xs text-danger" role="alert">{localError}</p>}
+        {upload.isError && <p className="mt-1.5 text-xs text-danger" role="alert">{errorMessage(upload.error)}</p>}
+      </div>
+    </div>
+  );
 }
 
 function ResumeDownload() {

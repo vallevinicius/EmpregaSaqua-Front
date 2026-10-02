@@ -78,6 +78,14 @@ Nenhum endpoint novo — são e-mails automáticos ligados a ações que o front
 
 Todos são best-effort (nunca derrubam a ação que dispara) e reaproveitam `MailService#renderTemplate` (mesmo padrão de `nova-vaga`, com escape automático de HTML).
 
+### Novo no back: área da vaga/candidato, foto de perfil, idiomas, chat direto (banco de talentos)
+
+- **`JobArea`** (enum novo: `ADMINISTRACAO`, `TI`, `SAUDE`, `EDUCACAO`, `COMERCIO_VENDAS`, `ALIMENTACAO`, `CONSTRUCAO`, `LIMPEZA_SERVICOS_GERAIS`, `LOGISTICA_TRANSPORTE`, `TURISMO_HOTELARIA`, `OUTROS`). `Job.area` e `CandidateProfile.area` são **opcionais** — um valor `null` em qualquer um dos dois lados significa "sem restrição".
+- **Bloqueio por área**: `POST /jobs/:jobId/applications` agora retorna **403** com `"Essa vaga é de uma área diferente da área de atuação do seu perfil."` quando `job.area` e `candidate.area` estão **ambos** preenchidos e são diferentes. `CreateJobDto`/`UpdateJobDto` ganharam `area?: JobArea`; `UpdateCandidateProfileDto` também.
+- **Foto de perfil**: `POST /uploads/avatar` (role `JOB_SEEKER`, mesmo padrão de `/uploads/logo` — JPEG/PNG/WebP/GIF até 2MB, convertida pra WebP) já salva a URL em `CandidateProfile.avatar_url` (diferente de `/uploads/logo`, que só devolve a URL e deixa o front gravar à parte — ver item #1 da tabela de problemas).
+- **Idiomas**: `CandidateProfile.languages: string[]` (igual a `skills`, lista de texto livre tipo `"Inglês - Avançado"`). `UpdateCandidateProfileDto.languages?: string[]`.
+- **Chat direto (banco de talentos)**: `ChatRoom.job_id` agora é **opcional** — sem vaga associada, é uma conversa direta entre empresa e candidato (tipo mensagem de LinkedIn), sem precisar de candidatura. No gateway, `joinRoom` aceita o payload sem `jobId`; o front chama isso a partir de "Buscar talentos"/"Banco de talentos". `GET /chat/rooms` devolve `job_id: null` e `job_title: "Conversa direta"` para essas salas.
+
 O front precisa de uma rota `/excluir-conta/confirmar` que lê `?token=` da URL e chama `confirm-deletion`.
 
 `Paginated<T> = { data: T[], meta: { total_items, total_pages, current_page, per_page } }` (mesmo formato de `GET /jobs`).

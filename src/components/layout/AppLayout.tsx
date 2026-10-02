@@ -5,9 +5,8 @@ import { useAuthActions, useSession } from '@/auth/useAuth';
 import { chatApi } from '@/api/endpoints';
 import { consumeLogoutReason, subscribe } from '@/auth/session';
 import { Button, buttonClass, cx } from '../ui';
-import { LogOutIcon, MenuIcon, XIcon } from '../icons';
-import logo from '@/assets/logo.svg';
-import logoInverted from '@/assets/logo-inverted.svg';
+import { LogOutIcon, MenuIcon, ShieldCheckIcon, XIcon } from '../icons';
+import logoFull from '@/assets/logo-full.png';
 import { useToast } from '../feedback';
 import type { Role } from '@/api/types';
 import { ROLE_LABEL } from '@/lib/format';
@@ -39,12 +38,9 @@ const NAV: Record<Role | 'PUBLIC', NavItem[]> = {
     { to: '/mensagens', label: 'Mensagens' },
     { to: '/empresa/perfil', label: 'Empresa' },
   ],
-  ADMIN: [
-    { to: '/admin', label: 'Painel', end: true },
-    { to: '/admin/moderacao', label: 'Moderação' },
-    { to: '/admin/usuarios', label: 'Usuários' },
-    { to: '/', label: 'Vagas públicas', end: true },
-  ],
+  // A navegação interna do admin (Moderação/Vagas/Empresas/Usuários) vive nas abas de AdminLayout,
+  // não aqui — isso evita lotar a navbar principal com itens de uma única área.
+  ADMIN: [{ to: '/', label: 'Vagas públicas', end: true }],
 };
 
 const FULL_BLEED = ['/', '/vagas/:id', '/entrar', '/cadastro'];
@@ -129,15 +125,21 @@ export function AppLayout() {
         Pular para o conteúdo
       </a>
       <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur">
-        <div className="mx-auto grid h-16 max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 sm:px-6">
-          <div className="justify-self-start"><Logo /></div>
-          {/* Colunas das pontas com o mesmo peso (1fr): o nav fica centralizado de verdade no header, não só "colado" no logo. */}
-          <nav aria-label="Principal" className="hidden items-center justify-self-center lg:flex">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-8 px-4 sm:px-6">
+          <Logo />
+          {/* Nav colado no logo (padrão mais comum de navbar); a área de sessão vai pro extremo
+              direito sozinha via ml-auto, sem depender da largura dela pra posicionar o nav. */}
+          <nav aria-label="Principal" className="hidden items-center lg:flex">
             {items.map((i) => navLink(i))}
           </nav>
-          <div className="flex items-center justify-self-end gap-2">
+          <div className="ml-auto flex items-center gap-2">
             {session ? (
               <>
+                {role === 'ADMIN' && (
+                  <Link to="/admin" className={buttonClass('secondary', 'sm', 'max-sm:hidden')}>
+                    <ShieldCheckIcon size={16} /> Painel de admin
+                  </Link>
+                )}
                 <div className="hidden items-center gap-3 md:flex">
                   <span className="flex size-9 items-center justify-center rounded-full bg-primary-soft text-sm font-bold uppercase text-primary" aria-hidden>
                     {session.user.email.slice(0, 1)}
@@ -178,6 +180,11 @@ export function AppLayout() {
         </div>
         {menuOpen && (
           <nav id="menu-mobile" aria-label="Principal (mobile)" className="flex flex-col gap-1 border-t border-border px-4 py-3 lg:hidden">
+            {role === 'ADMIN' && (
+              <Link to="/admin" className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-primary hover:bg-surface-2">
+                <ShieldCheckIcon size={16} /> Painel de admin
+              </Link>
+            )}
             {items.map((i) => navLink(i, true))}
             {session ? (
               <button type="button" onClick={doLogout} className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-danger hover:bg-danger-soft sm:hidden">
@@ -202,13 +209,13 @@ export function AppLayout() {
 
 function Logo({ inverted }: { inverted?: boolean }) {
   return (
-    <Link to="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight">
-      <img src={inverted ? logoInverted : logo} alt="" className="size-8" />
-      {/* Cores da logo: "Emprega" verde, "Saquá" azul (branco sobre o rodapé azul). */}
-      <span className="hidden min-[360px]:inline">
-        <span className="text-green">Emprega</span>
-        <span className={inverted ? 'text-white' : 'text-primary'}>Saquá</span>
-      </span>
+    <Link to="/" className="flex items-center">
+      {/* Logo tem fundo branco embutido (sem transparência): sobre o rodapé azul ela vai dentro de um chip branco. */}
+      <img
+        src={logoFull}
+        alt="EmpregaSaquá"
+        className={cx('h-10 w-auto object-contain sm:h-11', inverted && 'rounded-lg bg-white p-1.5')}
+      />
     </Link>
   );
 }

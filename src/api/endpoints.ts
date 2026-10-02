@@ -19,6 +19,7 @@ import type {
   Job,
   JobAlert,
   JobApplication,
+  JobArea,
   JobStatus,
   Paginated,
   Role,
@@ -35,11 +36,15 @@ import type {
 
 // ---------- mapeadores defensivos ----------
 
-/** Remove expected_answer (gabarito das perguntas knockout) que o back hoje vaza publicamente. */
+/** Remove eliminates (gabarito das opções de pergunta eliminatória) caso o back algum dia vaze isso publicamente. */
 function sanitizeJob<T extends Job>(job: T): T {
   if (!job) return job;
   const questions = Array.isArray(job.questions)
-    ? job.questions.map((q) => ({ id: q.id, question_text: q.question_text }))
+    ? job.questions.map((q) => ({
+        id: q.id,
+        question_text: q.question_text,
+        options: Array.isArray(q.options) ? q.options.map((o) => ({ id: o.id, option_text: o.option_text })) : [],
+      }))
     : job.questions;
   const cp = job.employer?.company_profile;
   const employer = job.employer
@@ -112,12 +117,13 @@ export interface JobInput {
   benefits: string[];
   work_model: WorkModel;
   contract_type: ContractType;
+  area?: JobArea;
   is_salary_visible?: boolean;
   is_pcd?: boolean;
   expires_at?: string;
   contact_whatsapp?: string;
   contact_email?: string;
-  questions?: { question_text: string; expected_answer: boolean }[];
+  questions?: { question_text: string; options: { option_text: string; eliminates: boolean }[] }[];
 }
 
 export const jobsApi = {
@@ -140,7 +146,7 @@ export const jobsApi = {
 export interface ApplyInput {
   cover_letter?: string;
   resume_url?: string;
-  answers?: { question_id: string; answer: boolean }[];
+  answers?: { question_id: string; option_id: string }[];
 }
 
 export const applicationsApi = {
@@ -178,6 +184,8 @@ export interface CandidateProfileInput {
   telefone?: string;
   address?: string;
   skills?: string[];
+  languages?: string[];
+  area?: JobArea;
   experiences?: Omit<Experience, 'id'>[];
   educations?: Omit<Education, 'id'>[];
 }
@@ -217,6 +225,11 @@ export const uploadsApi = {
     const fd = new FormData();
     fd.append('file', file);
     return request<UploadResponse>('/uploads/verification-document', { method: 'POST', body: fd, timeoutMs: 60_000 });
+  },
+  avatar: (file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return request<UploadResponse>('/uploads/avatar', { method: 'POST', body: fd, timeoutMs: 60_000 });
   },
 };
 
@@ -288,11 +301,24 @@ export const adminApi = {
 
 // ---------- Chat (REST) ----------
 
+export interface ChatAttachmentUpload {
+  url: string;
+  filename: string;
+  size_bytes: number;
+  type: 'image' | 'document';
+}
+
 export const chatApi = {
   unreadCount: (signal?: AbortSignal) => request<{ count: number }>('/chat/unread-count', { signal }),
   markRead: (roomId: string) => request<{ status: string }>(`/chat/room/${seg(roomId)}/read`, { method: 'PATCH' }),
   rooms: (signal?: AbortSignal) => request<ChatRoomSummary[]>('/chat/rooms', { signal }),
-  messages: (roomId: string, signal?: AbortSignal) => request<ChatMessage[]>(`/chat/room/${seg(roomId)}/messages`, { signal }),
+  messages: (roomId: string, params: { before?: string; limit?: number } = {}, signal?: AbortSignal) =>
+    request<ChatMessage[]>(`/chat/room/${seg(roomId)}/messages`, { query: params, signal }),
+  uploadAttachment: (file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return request<ChatAttachmentUpload>('/chat/attachments', { method: 'POST', body: fd, timeoutMs: 60_000 });
+  },
 };
 
 // ---------- CEP ----------

@@ -3,7 +3,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { candidatesApi } from '@/api/endpoints';
 import { Button, EmptyState, Input, PageHeader, Pagination, Skeleton } from '@/components/ui';
 import { ErrorState } from '@/components/feedback';
-import { CandidateSummary, SaveToPoolButton } from './CandidateCard';
+import { CandidateSummary, MessageCandidateButton, SaveToPoolButton } from './CandidateCard';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 interface Filters {
@@ -60,7 +60,12 @@ export default function CandidateSearchPage() {
                 <CandidateSummary
                   email={c.user?.email}
                   profile={c}
-                  actions={<SaveToPoolButton candidateId={c.user_id} />}
+                  actions={
+                    <>
+                      <MessageCandidateButton candidateId={c.user_id} />
+                      <SaveToPoolButton candidateId={c.user_id} />
+                    </>
+                  }
                 />
               </li>
             ))}

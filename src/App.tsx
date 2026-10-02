@@ -20,9 +20,12 @@ const JobApplicationsPage = lazy(() => import('@/features/employer/JobApplicatio
 const CandidateSearchPage = lazy(() => import('@/features/employer/CandidateSearchPage'));
 const TalentPoolPage = lazy(() => import('@/features/employer/TalentPoolPage'));
 const CompanyProfilePage = lazy(() => import('@/features/employer/CompanyProfilePage'));
+const AdminLayout = lazy(() => import('@/features/admin/AdminLayout'));
 const AdminDashboardPage = lazy(() => import('@/features/admin/AdminDashboardPage'));
 const AdminModerationPage = lazy(() => import('@/features/admin/AdminModerationPage'));
 const AdminUsersPage = lazy(() => import('@/features/admin/AdminUsersPage'));
+const AdminJobsPage = lazy(() => import('@/features/admin/AdminJobsPage'));
+const AdminCompaniesPage = lazy(() => import('@/features/admin/AdminCompaniesPage'));
 const ChatPage = lazy(() => import('@/features/chat/ChatPage'));
 const NotFoundPage = lazy(() => import('@/features/public/NotFoundPage'));
 const ConfirmAccountDeletionPage = lazy(() => import('@/features/public/ConfirmAccountDeletionPage'));
@@ -35,7 +38,7 @@ export function App() {
           <Route index element={<JobsListPage />} />
           <Route path="vagas/:id" element={<JobDetailPage />} />
           <Route path="vagas-salvas" element={<SavedJobsPage />} />
-          <Route path="curriculo" element={<ResumeBuilderPage />} />
+          <Route path="curriculo" element={<RequireAuth><ResumeBuilderPage /></RequireAuth>} />
           <Route path="entrar" element={<RedirectIfAuthed><LoginPage /></RedirectIfAuthed>} />
           <Route path="cadastro" element={<RedirectIfAuthed><RegisterPage /></RedirectIfAuthed>} />
           <Route path="excluir-conta/confirmar" element={<ConfirmAccountDeletionPage />} />
@@ -56,10 +59,12 @@ export function App() {
             <Route path="perfil" element={<RequireAuth roles={['EMPLOYER']}><CompanyProfilePage /></RequireAuth>} />
           </Route>
 
-          <Route path="admin">
-            <Route index element={<RequireAuth roles={['ADMIN']}><AdminDashboardPage /></RequireAuth>} />
-            <Route path="moderacao" element={<RequireAuth roles={['ADMIN']}><AdminModerationPage /></RequireAuth>} />
-            <Route path="usuarios" element={<RequireAuth roles={['ADMIN']}><AdminUsersPage /></RequireAuth>} />
+          <Route path="admin" element={<RequireAuth roles={['ADMIN']}><AdminLayout /></RequireAuth>}>
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="moderacao" element={<AdminModerationPage />} />
+            <Route path="vagas" element={<AdminJobsPage />} />
+            <Route path="empresas" element={<AdminCompaniesPage />} />
+            <Route path="usuarios" element={<AdminUsersPage />} />
           </Route>
 
           <Route path="mensagens" element={<RequireAuth roles={['JOB_SEEKER', 'EMPLOYER']}><ChatPage /></RequireAuth>} />

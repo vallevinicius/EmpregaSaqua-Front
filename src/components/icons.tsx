@@ -6,6 +6,7 @@ import {
   Briefcase,
   Buildings,
   CalendarBlank,
+  Camera,
   CaretLeft,
   CaretRight,
   ChatCircle,
@@ -25,12 +26,15 @@ import {
   MagnifyingGlass,
   MapPin,
   Monitor,
+  Paperclip,
   PaperPlaneTilt,
+  PencilSimple,
   Phone,
   ShieldCheck,
   SignOut,
   Sparkle,
   Star,
+  Translate,
   Trash,
   Tray,
   User,
@@ -96,3 +100,7 @@ export const TrashIcon = wrap(Trash);
 export const HeartIcon = wrap(Heart);
 export const BellIcon = wrap(Bell);
 export const BellSlashIcon = wrap(BellSlash);
+export const PaperclipIcon = wrap(Paperclip);
+export const PencilSimpleIcon = wrap(PencilSimple);
+export const CameraIcon = wrap(Camera);
+export const TranslateIcon = wrap(Translate);

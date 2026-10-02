@@ -250,7 +250,7 @@ function buildSchema(questionIds: string[]) {
       .optional()
       .refine((v) => !v || safeHttpUrl(v) !== null, 'Informe um link http(s) válido.'),
     // Toda pergunta precisa de resposta — o back hoje só avalia knockout se "answers" vier preenchido.
-    answers: z.object(Object.fromEntries(questionIds.map((qid) => [qid, z.enum(['yes', 'no'], { message: 'Responda esta pergunta.' })]))),
+    answers: z.object(Object.fromEntries(questionIds.map((qid) => [qid, z.string().min(1, 'Responda esta pergunta.')]))),
   });
 }
 
@@ -270,7 +270,7 @@ function ApplyForm({ job }: { job: Job }) {
         cover_letter: v.cover_letter || undefined,
         resume_url: v.resume_url ? safeHttpUrl(v.resume_url) ?? undefined : undefined,
         answers: questions.length
-          ? questions.map((q) => ({ question_id: q.id, answer: (v.answers as Record<string, string>)[q.id] === 'yes' }))
+          ? questions.map((q) => ({ question_id: q.id, option_id: (v.answers as Record<string, string>)[q.id]! }))
           : undefined,
       }),
     onSuccess: () => {
@@ -291,9 +291,13 @@ function ApplyForm({ job }: { job: Job }) {
         {questions.map((q) => (
           <fieldset key={q.id} className="flex flex-col gap-2">
             <legend className="text-sm font-medium"><SafeText>{q.question_text}</SafeText></legend>
-            <div className="flex gap-4 text-sm">
-              <label className="inline-flex items-center gap-2"><input type="radio" className="size-4 accent-[var(--es-primary)]" value="yes" {...form.register(`answers.${q.id}` as never)} /> Sim</label>
-              <label className="inline-flex items-center gap-2"><input type="radio" className="size-4 accent-[var(--es-primary)]" value="no" {...form.register(`answers.${q.id}` as never)} /> Não</label>
+            <div className="flex flex-col gap-1.5 text-sm">
+              {(q.options ?? []).map((opt) => (
+                <label key={opt.id} className="inline-flex items-center gap-2">
+                  <input type="radio" className="size-4 accent-[var(--es-primary)]" value={opt.id} {...form.register(`answers.${q.id}` as never)} />
+                  <SafeText>{opt.option_text}</SafeText>
+                </label>
+              ))}
             </div>
             {answerErrors[q.id]?.message && <p className="text-xs text-danger" role="alert">{answerErrors[q.id]?.message}</p>}
           </fieldset>

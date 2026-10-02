@@ -6,15 +6,15 @@ import { z } from 'zod';
 import { useSession } from '@/auth/useAuth';
 import { Button, Card, CardSectionTitle, Field, Input, PageHeader, Textarea, buttonClass } from '@/components/ui';
 import { CepLookup, StringListInput, cepToAddress } from '@/components/inputs';
-import { BriefcaseIcon, FileTextIcon, GraduationCapIcon, IdentificationCardIcon, SparkleIcon, TrashIcon } from '@/components/icons';
+import { BriefcaseIcon, FileTextIcon, GraduationCapIcon, IdentificationCardIcon, SparkleIcon, TranslateIcon, TrashIcon } from '@/components/icons';
 import { onlyDigits } from '@/lib/safe';
 import { ResumePreview } from '@/features/candidate/ResumePreview';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 /**
- * Criador de currículo público: funciona sem conta e sem back. Os dados ficam só neste navegador
- * (localStorage) e o PDF sai pela impressão do navegador ("Salvar como PDF"), com o mesmo layout da prévia.
- * Quem quiser se candidatar cria uma conta: o currículo com conta fica em /candidato/perfil.
+ * Criador de currículo (exige login, mas funciona sem back próprio): os dados ficam só neste
+ * navegador (localStorage) e o PDF sai pela impressão do navegador ("Salvar como PDF"), com o
+ * mesmo layout da prévia. O currículo ligado à conta (usado nas candidaturas) fica em /candidato/perfil.
  */
 const month = z.string().regex(/^\d{4}-\d{2}$/, 'Use o formato AAAA-MM.');
 const schema = z.object({
@@ -24,6 +24,7 @@ const schema = z.object({
   address: z.string().trim().max(200),
   bio: z.string().trim().max(2000),
   skills: z.array(z.string().trim().min(1).max(50)).max(30),
+  languages: z.array(z.string().trim().min(1).max(50)).max(20),
   experiences: z
     .array(
       z.object({
@@ -49,7 +50,7 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 
-const EMPTY: Values = { full_name: '', email: '', telefone: '', address: '', bio: '', skills: [], experiences: [], educations: [] };
+const EMPTY: Values = { full_name: '', email: '', telefone: '', address: '', bio: '', skills: [], languages: [], experiences: [], educations: [] };
 const KEY = 'es.resume-draft.v1';
 
 function loadDraft(): Values {
@@ -134,6 +135,11 @@ export default function ResumeBuilderPage() {
           </Card>
 
           <Card>
+            <CardSectionTitle icon={<TranslateIcon size={18} />} title="Idiomas" />
+            <Controller control={form.control} name="languages" render={({ field }) => <StringListInput value={field.value} onChange={field.onChange} placeholder="Ex.: Inglês - Intermediário" maxItems={20} maxLength={50} />} />
+          </Card>
+
+          <Card>
             <div className="mb-5 flex items-center justify-between">
               <CardSectionTitle icon={<BriefcaseIcon size={18} />} title="Experiência profissional" className="mb-0" />
               <Button size="sm" variant="secondary" disabled={exps.fields.length >= 20} onClick={() => exps.append({ company: '', role: '', start_date: '', end_date: '', description: '' })}>Adicionar</Button>
@@ -187,6 +193,7 @@ export default function ResumeBuilderPage() {
                 telefone: v.telefone ?? '',
                 address: v.address ?? '',
                 skills: (v.skills ?? []).filter((s): s is string => !!s),
+                languages: (v.languages ?? []).filter((s): s is string => !!s),
                 experiences: (v.experiences ?? []).filter((e): e is Values['experiences'][number] => !!e?.company || !!e?.role),
                 educations: (v.educations ?? []).filter((e): e is Values['educations'][number] => !!e?.institution || !!e?.degree),
               }}
