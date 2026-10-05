@@ -11,6 +11,8 @@ const SavedJobsPage = lazy(() => import('@/features/public/SavedJobsPage'));
 const JobDetailPage = lazy(() => import('@/features/public/JobDetailPage'));
 const LoginPage = lazy(() => import('@/features/auth/LoginPage'));
 const RegisterPage = lazy(() => import('@/features/auth/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('@/features/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('@/features/auth/ResetPasswordPage'));
 const MyApplicationsPage = lazy(() => import('@/features/candidate/MyApplicationsPage'));
 const CandidateProfilePage = lazy(() => import('@/features/candidate/CandidateProfilePage'));
 const EmployerDashboardPage = lazy(() => import('@/features/employer/EmployerDashboardPage'));
@@ -41,6 +43,8 @@ export function App() {
           <Route path="curriculo" element={<RequireAuth><ResumeBuilderPage /></RequireAuth>} />
           <Route path="entrar" element={<RedirectIfAuthed><LoginPage /></RedirectIfAuthed>} />
           <Route path="cadastro" element={<RedirectIfAuthed><RegisterPage /></RedirectIfAuthed>} />
+          <Route path="esqueci-minha-senha" element={<RedirectIfAuthed><ForgotPasswordPage /></RedirectIfAuthed>} />
+          <Route path="redefinir-senha" element={<RedirectIfAuthed><ResetPasswordPage /></RedirectIfAuthed>} />
           <Route path="excluir-conta/confirmar" element={<ConfirmAccountDeletionPage />} />
 
           <Route path="candidato">

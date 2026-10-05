@@ -23,6 +23,7 @@ import {
   ImageSquare,
   List,
   ListChecks,
+  Lock,
   MagnifyingGlass,
   MapPin,
   Monitor,
@@ -31,6 +32,7 @@ import {
   PencilSimple,
   Phone,
   ShieldCheck,
+  ShareNetwork,
   SignOut,
   Sparkle,
   Star,
@@ -104,3 +106,5 @@ export const PaperclipIcon = wrap(Paperclip);
 export const PencilSimpleIcon = wrap(PencilSimple);
 export const CameraIcon = wrap(Camera);
 export const TranslateIcon = wrap(Translate);
+export const ShareIcon = wrap(ShareNetwork);
+export const LockIcon = wrap(Lock);

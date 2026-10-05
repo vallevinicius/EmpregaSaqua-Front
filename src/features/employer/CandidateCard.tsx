@@ -9,7 +9,7 @@ import { Button, ConfirmDialog, Textarea } from '@/components/ui';
 import { SafeParagraphs, SafeText, useToast } from '@/components/feedback';
 import { MessageIcon } from '@/components/icons';
 import { ApiError } from '@/lib/http';
-import { formatMonthYear, formatPhone } from '@/lib/format';
+import { ESCOLARIDADE_LABEL, IDIOMA_LABEL, NIVEL_IDIOMA_LABEL, formatMonthYear, formatPhone } from '@/lib/format';
 import { whatsappLink } from '@/lib/safe';
 
 /** Resumo do candidato para a visão da empresa. Tudo renderizado como texto. */
@@ -52,6 +52,26 @@ export function CandidateSummary({ email, profile, extra, actions }: { email?: s
                   <p className="text-muted">
                     {formatPhone(profile.telefone)}{' '}
                     {wa && <a className="text-primary hover:underline" href={wa} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
+                  </p>
+                </div>
+              )}
+              {(profile.escolaridade || profile.cargo_interesse) && (
+                <div>
+                  <h4 className="mb-1 font-medium">Formação e interesse</h4>
+                  <p className="text-muted">
+                    {profile.escolaridade && ESCOLARIDADE_LABEL[profile.escolaridade]}
+                    {profile.escolaridade && profile.cargo_interesse && ' · '}
+                    {profile.cargo_interesse && <SafeText>{profile.cargo_interesse}</SafeText>}
+                  </p>
+                </div>
+              )}
+              {!!profile.languages?.length && (
+                <div>
+                  <h4 className="mb-1 font-medium">Idiomas</h4>
+                  <p className="text-muted">
+                    {profile.languages
+                      .map((l) => `${l.idioma === 'OUTRO' && l.idioma_outro ? l.idioma_outro : IDIOMA_LABEL[l.idioma]} (${NIVEL_IDIOMA_LABEL[l.nivel]})`)
+                      .join(', ')}
                   </p>
                 </div>
               )}

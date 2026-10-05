@@ -8,7 +8,15 @@ export type Role = 'JOB_SEEKER' | 'EMPLOYER' | 'ADMIN';
 export type JobStatus = 'PENDING' | 'ACTIVE' | 'FILLED' | 'REJECTED';
 export type ApplicationStatus = 'APPLIED' | 'REVIEWING' | 'INTERVIEW' | 'HIRED' | 'REJECTED';
 export type WorkModel = 'ON_SITE' | 'HYBRID' | 'REMOTE';
-export type ContractType = 'CLT' | 'PJ' | 'INTERNSHIP' | 'FREELANCE' | 'APPRENTICE';
+export type ContractType =
+  | 'TEMPO_DETERMINADO'
+  | 'INTERMITENTE'
+  | 'TERCEIRIZADO'
+  | 'REMOTO'
+  | 'PARCIAL'
+  | 'JOVEM_APRENDIZ'
+  | 'ESTAGIO'
+  | 'DOMESTICO';
 export type VerificationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type JobArea =
   | 'ADMINISTRACAO'
@@ -23,9 +31,36 @@ export type JobArea =
   | 'TURISMO_HOTELARIA'
   | 'OUTROS';
 
+export type Escolaridade =
+  | 'ANALFABETO'
+  | 'SEMIANALFABETO'
+  | 'FUNDAMENTAL_COMPLETO'
+  | 'FUNDAMENTAL_INCOMPLETO'
+  | 'MEDIO_COMPLETO'
+  | 'MEDIO_INCOMPLETO'
+  | 'SUPERIOR_COMPLETO'
+  | 'SUPERIOR_INCOMPLETO'
+  | 'POS_GRADUACAO_COMPLETA'
+  | 'POS_GRADUACAO_INCOMPLETA'
+  | 'MESTRADO_COMPLETO'
+  | 'MESTRADO_INCOMPLETO'
+  | 'DOUTORADO_COMPLETO'
+  | 'DOUTORADO_INCOMPLETO';
+
+export type Idioma = 'INGLES' | 'ESPANHOL' | 'FRANCES' | 'ALEMAO' | 'CHINES' | 'JAPONES' | 'LIBRAS' | 'OUTRO';
+export type NivelIdioma = 'BASICO' | 'INTERMEDIARIO' | 'AVANCADO';
+
+export interface CandidateLanguage {
+  id?: string;
+  idioma: Idioma;
+  idioma_outro?: string | null;
+  nivel: NivelIdioma;
+}
+
 export interface SessionUser {
   id: string;
   email: string;
+  username?: string;
   role: Role;
 }
 
@@ -88,6 +123,7 @@ export interface Job {
   is_salary_visible: boolean;
   is_pcd: boolean;
   expires_at: string | null;
+  escolaridade_exigida?: Escolaridade | null;
   contact_whatsapp: string | null;
   contact_email: string | null;
   status: JobStatus;
@@ -99,6 +135,7 @@ export interface Job {
     company_profile?: Pick<CompanyProfile, 'nome_fantasia' | 'logo_url'> & Partial<CompanyProfile> | null;
   } | null;
   questions?: JobQuestion[];
+  language_requirements?: CandidateLanguage[];
 }
 
 export interface Experience {
@@ -127,10 +164,14 @@ export interface CandidateProfile {
   telefone: string | null;
   habilidades: string | null;
   skills: string[];
-  languages: string[];
+  languages: CandidateLanguage[];
   area?: JobArea | null;
   avatar_url?: string | null;
   address: string | null;
+  genero?: string | null;
+  cargo_interesse?: string | null;
+  is_pcd: boolean;
+  escolaridade?: Escolaridade | null;
   created_at: string;
   updated_at: string;
   user?: { id: string; email: string };

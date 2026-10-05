@@ -15,16 +15,18 @@ import {
   CalendarIcon,
   CheckIcon,
   ClockIcon,
+  GraduationCapIcon,
   MailIcon,
   MapPinIcon,
   WhatsappIcon,
   HeartIcon,
   MonitorIcon,
   SendIcon,
+  ShareIcon,
   WalletIcon,
 } from '@/components/icons';
 import { ApiErrorAlert, ErrorState, SafeParagraphs, SafeText, useToast } from '@/components/feedback';
-import { CONTRACT_LABEL, JOB_STATUS_LABEL, WORK_MODEL_LABEL, formatDate } from '@/lib/format';
+import { CONTRACT_LABEL, ESCOLARIDADE_LABEL, IDIOMA_LABEL, JOB_STATUS_LABEL, NIVEL_IDIOMA_LABEL, WORK_MODEL_LABEL, formatDate } from '@/lib/format';
 import { decodeEntities, mailtoLink, safeHttpUrl, whatsappLink } from '@/lib/safe';
 import { profileCompleteness } from '@/lib/profile';
 import { toggleSavedJob, useSavedJobs } from '@/lib/savedJobs';
@@ -77,15 +79,18 @@ export default function JobDetailPage() {
               <h1 className="mt-1 text-3xl font-extrabold tracking-tight sm:text-4xl">
                 <SafeText>{job.title}</SafeText>
               </h1>
-              <button
-                type="button"
-                aria-pressed={savedJobs.some((s) => s.id === job.id)}
-                onClick={() => toggleSavedJob({ id: job.id, title: decodeEntities(job.title), company: decodeEntities(company), address: decodeEntities(job.address) })}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-full text-sm font-semibold text-muted hover:text-primary"
-              >
-                <HeartIcon size={18} filled={savedJobs.some((s) => s.id === job.id)} className={savedJobs.some((s) => s.id === job.id) ? 'text-primary' : undefined} />
-                {savedJobs.some((s) => s.id === job.id) ? 'Vaga salva' : 'Salvar vaga'}
-              </button>
+              <div className="mt-3 flex items-center gap-4">
+                <button
+                  type="button"
+                  aria-pressed={savedJobs.some((s) => s.id === job.id)}
+                  onClick={() => toggleSavedJob({ id: job.id, title: decodeEntities(job.title), company: decodeEntities(company), address: decodeEntities(job.address) })}
+                  className="inline-flex items-center gap-1.5 rounded-full text-sm font-semibold text-muted hover:text-primary"
+                >
+                  <HeartIcon size={18} filled={savedJobs.some((s) => s.id === job.id)} className={savedJobs.some((s) => s.id === job.id) ? 'text-primary' : undefined} />
+                  {savedJobs.some((s) => s.id === job.id) ? 'Vaga salva' : 'Salvar vaga'}
+                </button>
+                <ShareJobButton title={decodeEntities(job.title)} />
+              </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 {job.status !== 'ACTIVE' && <Badge tone="warning">{JOB_STATUS_LABEL[job.status]}</Badge>}
                 <Badge tone="primary"><MonitorIcon size={13} /> {WORK_MODEL_LABEL[job.work_model]}</Badge>
@@ -104,6 +109,7 @@ export default function JobDetailPage() {
             <Info icon={<ClockIcon />} label="Jornada"><SafeText>{job.work_schedule}</SafeText></Info>
             <Info icon={<WalletIcon />} label="Salário">{job.is_salary_visible && job.salary_range ? <SafeText>{job.salary_range}</SafeText> : 'A combinar'}</Info>
             <Info icon={<CalendarIcon />} label="Inscrições até">{job.expires_at ? formatDate(job.expires_at) : 'Sem prazo'}</Info>
+            {job.escolaridade_exigida && <Info icon={<GraduationCapIcon />} label="Escolaridade exigida">{ESCOLARIDADE_LABEL[job.escolaridade_exigida]}</Info>}
           </dl>
 
           <div className="flex max-w-[70ch] flex-col gap-10 pt-2">
@@ -113,6 +119,12 @@ export default function JobDetailPage() {
             <ListSection title="Requisitos obrigatórios" items={job.mandatory_qualifications} />
             <ListSection title="Diferenciais" items={job.differential_qualifications} />
             <ListSection title="Benefícios" items={job.benefits} />
+            {!!job.language_requirements?.length && (
+              <ListSection
+                title="Idiomas exigidos"
+                items={job.language_requirements.map((l) => `${l.idioma === 'OUTRO' && l.idioma_outro ? l.idioma_outro : IDIOMA_LABEL[l.idioma]} (${NIVEL_IDIOMA_LABEL[l.nivel]})`)}
+              />
+            )}
           </div>
         </article>
 
@@ -196,6 +208,33 @@ function Unavailable() {
       <p className="mt-2 text-muted">Esta vaga não existe, foi encerrada ou ainda está em análise.</p>
       <Link to="/" className={buttonClass('primary', 'md', 'mt-8')}>Ver outras vagas</Link>
     </Container>
+  );
+}
+
+/** Compartilha via Web Share API nativa (mobile/alguns navegadores) com fallback de copiar o link. */
+function ShareJobButton({ title }: { title: string }) {
+  const toast = useToast();
+  const share = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text: `Vaga: ${title}`, url });
+      } catch {
+        /* usuário cancelou o compartilhamento — nada a fazer */
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast('Link da vaga copiado!');
+    } catch {
+      toast('Não foi possível copiar o link.', 'danger');
+    }
+  };
+  return (
+    <button type="button" onClick={() => void share()} className="inline-flex items-center gap-1.5 rounded-full text-sm font-semibold text-muted hover:text-primary">
+      <ShareIcon size={18} /> Compartilhar
+    </button>
   );
 }
 

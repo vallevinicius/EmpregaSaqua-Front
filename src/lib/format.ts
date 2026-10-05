@@ -1,4 +1,4 @@
-import type { ApplicationStatus, ContractType, JobArea, JobStatus, Role, VerificationStatus, WorkModel } from '@/api/types';
+import type { ApplicationStatus, ContractType, Escolaridade, Idioma, JobArea, JobStatus, NivelIdioma, Role, VerificationStatus, WorkModel } from '@/api/types';
 
 export const JOB_AREA_LABEL: Record<JobArea, string> = {
   ADMINISTRACAO: 'Administração',
@@ -21,11 +21,14 @@ export const WORK_MODEL_LABEL: Record<WorkModel, string> = {
 };
 
 export const CONTRACT_LABEL: Record<ContractType, string> = {
-  CLT: 'CLT',
-  PJ: 'PJ',
-  INTERNSHIP: 'Estágio',
-  FREELANCE: 'Freelance',
-  APPRENTICE: 'Jovem Aprendiz',
+  TEMPO_DETERMINADO: 'Contrato por tempo determinado',
+  INTERMITENTE: 'Trabalho intermitente',
+  TERCEIRIZADO: 'Trabalho terceirizado',
+  REMOTO: 'Trabalho remoto',
+  PARCIAL: 'Trabalho parcial',
+  JOVEM_APRENDIZ: 'Jovem aprendiz',
+  ESTAGIO: 'Estágio',
+  DOMESTICO: 'Trabalho doméstico',
 };
 
 export const JOB_STATUS_LABEL: Record<JobStatus, string> = {
@@ -47,6 +50,40 @@ export const VERIFICATION_LABEL: Record<VerificationStatus, string> = {
   PENDING: 'Verificação pendente',
   APPROVED: 'Empresa verificada',
   REJECTED: 'Verificação reprovada',
+};
+
+export const ESCOLARIDADE_LABEL: Record<Escolaridade, string> = {
+  ANALFABETO: 'Analfabeto',
+  SEMIANALFABETO: 'Semianalfabeto',
+  FUNDAMENTAL_COMPLETO: 'Fundamental completo',
+  FUNDAMENTAL_INCOMPLETO: 'Fundamental incompleto',
+  MEDIO_COMPLETO: 'Médio completo',
+  MEDIO_INCOMPLETO: 'Médio incompleto',
+  SUPERIOR_COMPLETO: 'Superior completo',
+  SUPERIOR_INCOMPLETO: 'Superior incompleto',
+  POS_GRADUACAO_COMPLETA: 'Pós-graduação completa',
+  POS_GRADUACAO_INCOMPLETA: 'Pós-graduação incompleta',
+  MESTRADO_COMPLETO: 'Mestrado completo',
+  MESTRADO_INCOMPLETO: 'Mestrado incompleto',
+  DOUTORADO_COMPLETO: 'Doutorado completo',
+  DOUTORADO_INCOMPLETO: 'Doutorado incompleto',
+};
+
+export const IDIOMA_LABEL: Record<Idioma, string> = {
+  INGLES: 'Inglês',
+  ESPANHOL: 'Espanhol',
+  FRANCES: 'Francês',
+  ALEMAO: 'Alemão',
+  CHINES: 'Chinês (mandarim)',
+  JAPONES: 'Japonês',
+  LIBRAS: 'Libras',
+  OUTRO: 'Outro',
+};
+
+export const NIVEL_IDIOMA_LABEL: Record<NivelIdioma, string> = {
+  BASICO: 'Básico',
+  INTERMEDIARIO: 'Intermediário',
+  AVANCADO: 'Avançado',
 };
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -91,6 +128,14 @@ export function formatMonthYear(value: string | null | undefined): string {
   return Number.isNaN(d.getTime()) ? value : monthYearFmt.format(d);
 }
 
+/** Números grandes viram "arredondado+" (ex.: 143 -> "100+", 2530 -> "2.500+") pra não parecer uma contagem exata. */
+export function formatApproxCount(value: number): string {
+  if (value < 100) return value.toLocaleString('pt-BR');
+  const step = value < 1000 ? 100 : value < 10_000 ? 500 : 1000;
+  const rounded = Math.floor(value / step) * step;
+  return `${rounded.toLocaleString('pt-BR')}+`;
+}
+
 export function formatCep(value: string): string {
   const d = value.replace(/\D/g, '').slice(0, 8);
   return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
@@ -104,6 +149,16 @@ export function formatCnpj(value: string): string {
   if (d.length > 5) out += `.${d.slice(5, 8)}`;
   if (d.length > 8) out += `/${d.slice(8, 12)}`;
   if (d.length > 12) out += `-${d.slice(12, 14)}`;
+  return out;
+}
+
+/** Máscara de CPF enquanto digita: 000.000.000-00. O back só recebe os dígitos (ver onlyDigits). */
+export function formatCpf(value: string): string {
+  const d = value.replace(/\D/g, '').slice(0, 11);
+  let out = d.slice(0, 3);
+  if (d.length > 3) out += `.${d.slice(3, 6)}`;
+  if (d.length > 6) out += `.${d.slice(6, 9)}`;
+  if (d.length > 9) out += `-${d.slice(9, 11)}`;
   return out;
 }
 

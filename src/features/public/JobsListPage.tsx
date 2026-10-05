@@ -1,13 +1,13 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { jobAlertsApi, jobsApi, type JobFilters } from '@/api/endpoints';
-import type { ContractType, WorkModel } from '@/api/types';
+import { analyticsApi, candidatesApi, jobAlertsApi, jobsApi, type JobFilters } from '@/api/endpoints';
+import type { ContractType, JobArea, WorkModel } from '@/api/types';
 import { useSession } from '@/auth/useAuth';
 import { Button, EmptyState, Pagination, Skeleton, cx } from '@/components/ui';
 import { ErrorState, useToast } from '@/components/feedback';
 import { errorMessage } from '@/lib/http';
-import { CONTRACT_LABEL, WORK_MODEL_LABEL } from '@/lib/format';
+import { CONTRACT_LABEL, JOB_AREA_LABEL, WORK_MODEL_LABEL, formatApproxCount } from '@/lib/format';
 import {
   AccessibilityIcon,
   BellIcon,
@@ -27,6 +27,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 const WORK_MODELS = Object.keys(WORK_MODEL_LABEL) as WorkModel[];
 const CONTRACTS = Object.keys(CONTRACT_LABEL) as ContractType[];
+const AREAS = Object.keys(JOB_AREA_LABEL) as JobArea[];
 const PAGE_SIZE = 10;
 
 /** Atalhos do hero: bairros de Saquarema, aplicados no filtro de local (mesmo campo da busca). */
@@ -37,6 +38,7 @@ function readFilters(sp: URLSearchParams): Required<Pick<JobFilters, 'page'>> & 
   const page = Math.max(1, Math.min(10_000, Number.parseInt(sp.get('page') ?? '1', 10) || 1));
   const wm = sp.get('modelo') as WorkModel | null;
   const ct = sp.get('contrato') as ContractType | null;
+  const ar = sp.get('area') as JobArea | null;
   return {
     page,
     limit: PAGE_SIZE,
@@ -45,6 +47,7 @@ function readFilters(sp: URLSearchParams): Required<Pick<JobFilters, 'page'>> & 
     work_model: wm && WORK_MODELS.includes(wm) ? wm : undefined,
     contract_type: ct && CONTRACTS.includes(ct) ? ct : undefined,
     is_pcd: sp.get('pcd') === '1' ? true : undefined,
+    area: ar && AREAS.includes(ar) ? ar : undefined,
   };
 }
 
@@ -54,6 +57,17 @@ export function JobsListPage() {
   const filters = readFilters(sp);
   const [q, setQ] = useState(filters.title_like ?? '');
   const [local, setLocal] = useState(filters.address ?? '');
+  const session = useSession();
+  // Área do candidato logado: usada só pra avisar na lista que uma vaga é de outra área
+  // (o bloqueio de verdade já acontece na candidatura — ver ApplicationsService#applyForJob).
+  const candidateMe = useQuery({
+    queryKey: ['candidate', 'me'],
+    queryFn: ({ signal }) => candidatesApi.me(signal),
+    enabled: session?.user.role === 'JOB_SEEKER',
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const candidateArea = candidateMe.data?.area;
 
   const query = useQuery({
     queryKey: ['jobs', 'public', filters],
@@ -76,7 +90,7 @@ export function JobsListPage() {
     update({ q: q.trim() || undefined, local: local.trim() || undefined });
   };
 
-  const hasFilters = !!(filters.title_like || filters.address || filters.work_model || filters.contract_type || filters.is_pcd);
+  const hasFilters = !!(filters.title_like || filters.address || filters.work_model || filters.contract_type || filters.is_pcd || filters.area);
   const landing = !hasFilters && filters.page === 1;
   const total = query.data?.meta.total_items;
 
@@ -92,6 +106,7 @@ export function JobsListPage() {
     filters.work_model && { label: WORK_MODEL_LABEL[filters.work_model], clear: () => update({ modelo: undefined }) },
     filters.contract_type && { label: CONTRACT_LABEL[filters.contract_type], clear: () => update({ contrato: undefined }) },
     filters.is_pcd && { label: 'Vagas PcD', clear: () => update({ pcd: undefined }) },
+    filters.area && { label: `Só da minha área (${JOB_AREA_LABEL[filters.area]})`, clear: () => update({ area: undefined }) },
   ].filter((c): c is { label: string; clear: () => void } => !!c);
 
   return (
@@ -167,6 +182,7 @@ export function JobsListPage() {
               ))}
             </div>
           )}
+          {landing && <PublicStatsRow />}
         </div>
       </section>
 
@@ -224,6 +240,25 @@ export function JobsListPage() {
                     className="relative h-6 w-11 shrink-0 rounded-full bg-border transition-colors after:absolute after:left-0.5 after:top-0.5 after:size-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:bg-primary peer-checked:after:translate-x-5 peer-focus-visible:ring-4 peer-focus-visible:ring-ring/25"
                   />
                 </label>
+                {candidateArea && (
+                  <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl bg-surface-2 px-3.5 py-3 text-sm font-semibold">
+                    <span className="inline-flex items-center gap-2">
+                      <ShieldCheckIcon size={16} className="text-primary" />
+                      Só da minha área ({JOB_AREA_LABEL[candidateArea]})
+                    </span>
+                    <input
+                      type="checkbox"
+                      role="switch"
+                      checked={filters.area === candidateArea}
+                      onChange={(e) => update({ area: e.target.checked ? candidateArea : undefined })}
+                      className="peer sr-only"
+                    />
+                    <span
+                      aria-hidden
+                      className="relative h-6 w-11 shrink-0 rounded-full bg-border transition-colors after:absolute after:left-0.5 after:top-0.5 after:size-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:bg-primary peer-checked:after:translate-x-5 peer-focus-visible:ring-4 peer-focus-visible:ring-ring/25"
+                    />
+                  </label>
+                )}
                 {hasFilters && (
                   <Button variant="secondary" size="sm" onClick={clearAll}>
                     Limpar filtros
@@ -277,7 +312,7 @@ export function JobsListPage() {
                 <ul className={cx('divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface transition-opacity', query.isPlaceholderData && 'opacity-60')}>
                   {query.data.data.map((job) => (
                     <li key={job.id}>
-                      <JobCard job={job} />
+                      <JobCard job={job} candidateArea={candidateArea} />
                     </li>
                   ))}
                 </ul>
@@ -331,6 +366,27 @@ function JobAlertButton({ filters, className }: { filters: JobFilters; className
   );
 }
 
+/** Contadores públicos ("X empresas, Y candidatos, Z vagas") no estilo do Banco de Oportunidades de Niterói. */
+function PublicStatsRow() {
+  const stats = useQuery({ queryKey: ['analytics', 'public'], queryFn: ({ signal }) => analyticsApi.public(signal), staleTime: 5 * 60_000 });
+  if (!stats.data) return null;
+  const items = [
+    { label: 'Empresas cadastradas', value: stats.data.total_companies },
+    { label: 'Candidatos cadastrados', value: stats.data.total_candidates },
+    { label: 'Vagas ativas', value: stats.data.total_jobs },
+  ];
+  return (
+    <dl className="rise mt-10 grid max-w-2xl grid-cols-3 gap-4 [animation-delay:220ms]">
+      {items.map((it) => (
+        <div key={it.label} className="rounded-2xl border border-border bg-surface px-4 py-4 text-center shadow-card sm:px-6">
+          <dt className="text-xs font-semibold uppercase tracking-wide text-muted">{it.label}</dt>
+          <dd className="mt-1 text-3xl font-black tracking-tight text-primary">{formatApproxCount(it.value)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 function Perk({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
     <li className="inline-flex items-center gap-2.5">
@@ -340,7 +396,10 @@ function Perk({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   );
 }
 
-/** Lista de opções em pílulas (estilo facetas), com "Todos". Radios nativos para acessibilidade. */
+const FACET_COLLAPSE_LIMIT = 5;
+
+/** Lista de opções em pílulas (estilo facetas), com "Todos". Radios nativos para acessibilidade.
+ *  Listas longas (mais que FACET_COLLAPSE_LIMIT) começam recolhidas, com um "+N" pra expandir. */
 function FacetGroup({
   legend,
   name,
@@ -354,11 +413,19 @@ function FacetGroup({
   options: { value: string; label: string }[];
   onChange: (v: string) => void;
 }) {
+  const all = [{ value: '', label: 'Todos' }, ...options];
+  // Já expande se a opção atualmente selecionada só aparece na parte escondida.
+  const selectedIsHidden = all.findIndex((o) => o.value === value) >= FACET_COLLAPSE_LIMIT;
+  const [expanded, setExpanded] = useState(selectedIsHidden);
+  const collapsible = all.length > FACET_COLLAPSE_LIMIT;
+  const shown = expanded || !collapsible ? all : all.slice(0, FACET_COLLAPSE_LIMIT);
+  const hiddenCount = all.length - FACET_COLLAPSE_LIMIT;
+
   return (
     <fieldset>
       <legend className="mb-3 text-sm font-bold">{legend}</legend>
       <div className="flex flex-wrap gap-2">
-        {[{ value: '', label: 'Todos' }, ...options].map((o) => (
+        {shown.map((o) => (
           <label
             key={o.value || 'all'}
             className={cx(
@@ -370,6 +437,15 @@ function FacetGroup({
             {o.label}
           </label>
         ))}
+        {collapsible && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="rounded-full border border-dashed border-border px-3.5 py-1.5 text-sm font-medium text-muted transition-colors hover:border-primary hover:text-primary"
+          >
+            {expanded ? 'Ver menos' : `+${hiddenCount} mais`}
+          </button>
+        )}
       </div>
     </fieldset>
   );

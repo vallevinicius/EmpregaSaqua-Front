@@ -4,9 +4,11 @@ import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useSession } from '@/auth/useAuth';
-import { Button, Card, CardSectionTitle, Field, Input, PageHeader, Textarea, buttonClass } from '@/components/ui';
+import type { Idioma, NivelIdioma } from '@/api/types';
+import { Button, Card, CardSectionTitle, Field, Input, PageHeader, Select, Textarea, buttonClass } from '@/components/ui';
 import { CepLookup, StringListInput, cepToAddress } from '@/components/inputs';
 import { BriefcaseIcon, FileTextIcon, GraduationCapIcon, IdentificationCardIcon, SparkleIcon, TranslateIcon, TrashIcon } from '@/components/icons';
+import { IDIOMA_LABEL, NIVEL_IDIOMA_LABEL } from '@/lib/format';
 import { onlyDigits } from '@/lib/safe';
 import { ResumePreview } from '@/features/candidate/ResumePreview';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
@@ -17,6 +19,8 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
  * mesmo layout da prévia. O currículo ligado à conta (usado nas candidaturas) fica em /candidato/perfil.
  */
 const month = z.string().regex(/^\d{4}-\d{2}$/, 'Use o formato AAAA-MM.');
+const IDIOMAS = Object.keys(IDIOMA_LABEL) as [Idioma, ...Idioma[]];
+const NIVEIS_IDIOMA = Object.keys(NIVEL_IDIOMA_LABEL) as [NivelIdioma, ...NivelIdioma[]];
 const schema = z.object({
   full_name: z.string().trim().max(150),
   email: z.union([z.literal(''), z.email('E-mail inválido.').max(254)]),
@@ -24,7 +28,9 @@ const schema = z.object({
   address: z.string().trim().max(200),
   bio: z.string().trim().max(2000),
   skills: z.array(z.string().trim().min(1).max(50)).max(30),
-  languages: z.array(z.string().trim().min(1).max(50)).max(20),
+  languages: z
+    .array(z.object({ idioma: z.enum(IDIOMAS), idioma_outro: z.string().trim().max(50), nivel: z.enum(NIVEIS_IDIOMA) }))
+    .max(20),
   experiences: z
     .array(
       z.object({
@@ -69,6 +75,7 @@ export default function ResumeBuilderPage() {
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: draft, mode: 'onChange' });
   const exps = useFieldArray({ control: form.control, name: 'experiences' });
   const edus = useFieldArray({ control: form.control, name: 'educations' });
+  const langs = useFieldArray({ control: form.control, name: 'languages' });
   const v = useWatch({ control: form.control });
   const { errors } = form.formState;
 
@@ -135,8 +142,39 @@ export default function ResumeBuilderPage() {
           </Card>
 
           <Card>
-            <CardSectionTitle icon={<TranslateIcon size={18} />} title="Idiomas" />
-            <Controller control={form.control} name="languages" render={({ field }) => <StringListInput value={field.value} onChange={field.onChange} placeholder="Ex.: Inglês - Intermediário" maxItems={20} maxLength={50} />} />
+            <div className="mb-5 flex items-center justify-between">
+              <CardSectionTitle icon={<TranslateIcon size={18} />} title="Idiomas" className="mb-0" />
+              <Button type="button" size="sm" variant="secondary" disabled={langs.fields.length >= 20} onClick={() => langs.append({ idioma: 'INGLES', idioma_outro: '', nivel: 'BASICO' })}>
+                Adicionar
+              </Button>
+            </div>
+            {langs.fields.length === 0 && <p className="text-sm text-muted">Nenhum idioma adicionado ainda.</p>}
+            <div className="flex flex-col gap-3">
+              {langs.fields.map((f, i) => (
+                <div key={f.id} className="grid gap-3 rounded-xl border border-border p-3 sm:grid-cols-[1fr_1fr_auto]">
+                  <Field label="Idioma">
+                    {({ id }) => (
+                      <Select id={id} {...form.register(`languages.${i}.idioma`)}>
+                        {IDIOMAS.map((idm) => <option key={idm} value={idm}>{IDIOMA_LABEL[idm]}</option>)}
+                      </Select>
+                    )}
+                  </Field>
+                  {v.languages?.[i]?.idioma === 'OUTRO' && (
+                    <Field label="Qual idioma?">{({ id }) => <Input id={id} maxLength={50} {...form.register(`languages.${i}.idioma_outro`)} />}</Field>
+                  )}
+                  <Field label="Nível">
+                    {({ id }) => (
+                      <Select id={id} {...form.register(`languages.${i}.nivel`)}>
+                        {NIVEIS_IDIOMA.map((n) => <option key={n} value={n}>{NIVEL_IDIOMA_LABEL[n]}</option>)}
+                      </Select>
+                    )}
+                  </Field>
+                  <div className="flex items-end">
+                    <Button type="button" size="sm" variant="danger-ghost" onClick={() => langs.remove(i)}><TrashIcon size={14} /> Remover</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </Card>
 
           <Card>
@@ -193,7 +231,7 @@ export default function ResumeBuilderPage() {
                 telefone: v.telefone ?? '',
                 address: v.address ?? '',
                 skills: (v.skills ?? []).filter((s): s is string => !!s),
-                languages: (v.languages ?? []).filter((s): s is string => !!s),
+                languages: (v.languages ?? []).filter((l): l is Values['languages'][number] => !!l?.idioma),
                 experiences: (v.experiences ?? []).filter((e): e is Values['experiences'][number] => !!e?.company || !!e?.role),
                 educations: (v.educations ?? []).filter((e): e is Values['educations'][number] => !!e?.institution || !!e?.degree),
               }}

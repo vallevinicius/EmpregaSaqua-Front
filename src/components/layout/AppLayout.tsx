@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, matchPath, useLocation, useNavigate } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthActions, useSession } from '@/auth/useAuth';
-import { chatApi } from '@/api/endpoints';
+import { candidatesApi, chatApi } from '@/api/endpoints';
 import { consumeLogoutReason, subscribe } from '@/auth/session';
 import { Button, buttonClass, cx } from '../ui';
 import { LogOutIcon, MenuIcon, ShieldCheckIcon, XIcon } from '../icons';
@@ -10,6 +10,7 @@ import logoFull from '@/assets/logo-full.png';
 import { useToast } from '../feedback';
 import type { Role } from '@/api/types';
 import { ROLE_LABEL } from '@/lib/format';
+import { safeAssetUrl } from '@/lib/safe';
 
 interface NavItem {
   to: string;
@@ -67,6 +68,14 @@ export function AppLayout() {
   const role = session?.user.role;
   const items = NAV[role ?? 'PUBLIC'];
   const unread = useUnreadCount(!!session && role !== 'ADMIN');
+  const candidateMe = useQuery({
+    queryKey: ['candidate', 'me'],
+    queryFn: ({ signal }) => candidatesApi.me(signal),
+    enabled: role === 'JOB_SEEKER',
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const avatarUrl = safeAssetUrl(candidateMe.data?.avatar_url);
 
   useEffect(() => setMenuOpen(false), [location.pathname]);
 
@@ -141,9 +150,13 @@ export function AppLayout() {
                   </Link>
                 )}
                 <div className="hidden items-center gap-3 md:flex">
-                  <span className="flex size-9 items-center justify-center rounded-full bg-primary-soft text-sm font-bold uppercase text-primary" aria-hidden>
-                    {session.user.email.slice(0, 1)}
-                  </span>
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="size-9 shrink-0 rounded-full border border-border object-cover" />
+                  ) : (
+                    <span className="flex size-9 items-center justify-center rounded-full bg-primary-soft text-sm font-bold uppercase text-primary" aria-hidden>
+                      {session.user.email.slice(0, 1)}
+                    </span>
+                  )}
                   <span className="text-xs leading-tight">
                     <span className="block max-w-[12rem] truncate font-semibold">{session.user.email}</span>
                     <span className="text-muted">{ROLE_LABEL[session.user.role]}</span>

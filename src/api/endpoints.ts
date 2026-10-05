@@ -6,6 +6,7 @@ import type {
   Application,
   ApplicationStatus,
   AuthResponse,
+  CandidateLanguage,
   CandidateProfile,
   CandidateSearchResult,
   CepResponse,
@@ -15,6 +16,7 @@ import type {
   ContractType,
   EmployerAnalytics,
   Education,
+  Escolaridade,
   Experience,
   Job,
   JobAlert,
@@ -72,6 +74,8 @@ function pickUser<U extends { id: string; email: string }>(u: U | undefined | nu
 
 export interface RegisterInput {
   email: string;
+  /** Nome de usuário único — usado pra login junto com e-mail e CPF (ver authApi.login). */
+  username: string;
   password: string;
   /** ADMIN nunca é enviado pelo front. */
   role: Extract<Role, 'JOB_SEEKER' | 'EMPLOYER'>;
@@ -83,15 +87,23 @@ export interface RegisterInput {
   full_name?: string;
   address?: string;
   bio?: string;
+  cpf?: string;
+  nome_social?: string;
+  data_nascimento?: string;
   /** Compartilhado entre empresa e candidato. */
   telefone?: string;
 }
 
 export const authApi = {
-  login: (email: string, password: string) =>
-    request<AuthResponse>('/auth/login', { method: 'POST', body: { email, password }, auth: false }),
+  /** identifier aceita e-mail, nome de usuário ou CPF. */
+  login: (identifier: string, password: string) =>
+    request<AuthResponse>('/auth/login', { method: 'POST', body: { identifier, password }, auth: false }),
   register: (input: RegisterInput) =>
     request<AuthResponse>('/auth/register', { method: 'POST', body: input, auth: false }),
+  forgotPassword: (identifier: string) =>
+    request<{ message: string }>('/auth/forgot-password', { method: 'POST', body: { identifier }, auth: false }),
+  resetPassword: (token: string, password: string) =>
+    request<{ message: string }>('/auth/reset-password', { method: 'POST', body: { token, password }, auth: false }),
 };
 
 // ---------- Jobs ----------
@@ -104,6 +116,7 @@ export interface JobFilters {
   work_model?: WorkModel | '';
   contract_type?: ContractType | '';
   is_pcd?: boolean;
+  area?: JobArea | '';
 }
 
 export interface JobInput {
@@ -121,9 +134,11 @@ export interface JobInput {
   is_salary_visible?: boolean;
   is_pcd?: boolean;
   expires_at?: string;
+  escolaridade_exigida?: Escolaridade;
   contact_whatsapp?: string;
   contact_email?: string;
   questions?: { question_text: string; options: { option_text: string; eliminates: boolean }[] }[];
+  language_requirements?: Omit<CandidateLanguage, 'id'>[];
 }
 
 export const jobsApi = {
@@ -184,8 +199,12 @@ export interface CandidateProfileInput {
   telefone?: string;
   address?: string;
   skills?: string[];
-  languages?: string[];
+  languages?: Omit<CandidateLanguage, 'id'>[];
   area?: JobArea;
+  genero?: string;
+  cargo_interesse?: string;
+  is_pcd?: boolean;
+  escolaridade?: Escolaridade;
   experiences?: Omit<Experience, 'id'>[];
   educations?: Omit<Education, 'id'>[];
 }
@@ -271,9 +290,16 @@ export const jobAlertsApi = {
 
 // ---------- Analytics ----------
 
+export interface PublicStats {
+  total_companies: number;
+  total_candidates: number;
+  total_jobs: number;
+}
+
 export const analyticsApi = {
   admin: (signal?: AbortSignal) => request<AdminAnalytics>('/analytics/admin', { signal }),
   employer: (signal?: AbortSignal) => request<EmployerAnalytics>('/analytics/employer', { signal }),
+  public: (signal?: AbortSignal) => request<PublicStats>('/analytics/public', { auth: false, signal }),
 };
 
 // ---------- Admin ----------

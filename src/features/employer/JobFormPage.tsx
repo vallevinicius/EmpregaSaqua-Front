@@ -5,12 +5,12 @@ import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { jobsApi, type JobInput } from '@/api/endpoints';
-import type { ContractType, Job, JobArea, WorkModel } from '@/api/types';
+import type { ContractType, Escolaridade, Idioma, Job, JobArea, NivelIdioma, WorkModel } from '@/api/types';
 import { useSession } from '@/auth/useAuth';
 import { Alert, Button, Card, Checkbox, Field, Input, PageHeader, PageLoader, Select, Textarea } from '@/components/ui';
 import { ApiErrorAlert, ErrorState, SafeText, useToast } from '@/components/feedback';
 import { CepLookup, StringListInput, cepToAddress } from '@/components/inputs';
-import { CONTRACT_LABEL, JOB_AREA_LABEL, WORK_MODEL_LABEL } from '@/lib/format';
+import { CONTRACT_LABEL, ESCOLARIDADE_LABEL, IDIOMA_LABEL, JOB_AREA_LABEL, NIVEL_IDIOMA_LABEL, WORK_MODEL_LABEL } from '@/lib/format';
 import { decodeEntities, onlyDigits } from '@/lib/safe';
 import { maskCurrencyInput } from '@/lib/currency';
 import { ApiError } from '@/lib/http';
@@ -21,6 +21,9 @@ import type { Control, FieldErrors } from 'react-hook-form';
 const WORK_MODELS = Object.keys(WORK_MODEL_LABEL) as [WorkModel, ...WorkModel[]];
 const CONTRACTS = Object.keys(CONTRACT_LABEL) as [ContractType, ...ContractType[]];
 const AREAS = Object.keys(JOB_AREA_LABEL) as [JobArea, ...JobArea[]];
+const ESCOLARIDADES = Object.keys(ESCOLARIDADE_LABEL) as [Escolaridade, ...Escolaridade[]];
+const IDIOMAS = Object.keys(IDIOMA_LABEL) as [Idioma, ...Idioma[]];
+const NIVEIS_IDIOMA = Object.keys(NIVEL_IDIOMA_LABEL) as [NivelIdioma, ...NivelIdioma[]];
 const list = z.array(z.string().trim().min(1).max(150)).max(20);
 
 /** Limites espelham CreateJobDto do back (MaxLength, ArrayMaxSize, Matches). */
@@ -35,6 +38,10 @@ const schema = z.object({
   work_model: z.enum(WORK_MODELS),
   contract_type: z.enum(CONTRACTS),
   area: z.enum(AREAS, { message: 'Escolha a área da vaga.' }),
+  escolaridade_exigida: z.union([z.enum(ESCOLARIDADES), z.literal('')]),
+  language_requirements: z
+    .array(z.object({ idioma: z.enum(IDIOMAS), idioma_outro: z.string().trim().max(50), nivel: z.enum(NIVEIS_IDIOMA) }))
+    .max(10),
   mandatory_qualifications: list,
   differential_qualifications: list,
   benefits: list,
@@ -67,8 +74,10 @@ const EMPTY: Values = {
   is_salary_visible: true,
   is_pcd: false,
   work_model: 'ON_SITE',
-  contract_type: 'CLT',
+  contract_type: 'TEMPO_DETERMINADO',
   area: '' as JobArea,
+  escolaridade_exigida: '',
+  language_requirements: [],
   mandatory_qualifications: [],
   differential_qualifications: [],
   benefits: [],
@@ -92,6 +101,8 @@ function toValues(job: Job): Values {
     work_model: job.work_model,
     contract_type: job.contract_type,
     area: job.area ?? ('' as JobArea),
+    escolaridade_exigida: job.escolaridade_exigida ?? '',
+    language_requirements: (job.language_requirements ?? []).map((l) => ({ idioma: l.idioma, idioma_outro: decodeEntities(l.idioma_outro ?? ''), nivel: l.nivel })),
     mandatory_qualifications: job.mandatory_qualifications.map(decodeEntities),
     differential_qualifications: job.differential_qualifications.map(decodeEntities),
     benefits: job.benefits.map(decodeEntities),
@@ -116,6 +127,12 @@ function toInput(v: Values, isEdit: boolean): JobInput {
     work_model: v.work_model,
     contract_type: v.contract_type,
     area: v.area,
+    escolaridade_exigida: (v.escolaridade_exigida || undefined) as JobInput['escolaridade_exigida'],
+    language_requirements: v.language_requirements.map((l) => ({
+      idioma: l.idioma,
+      idioma_outro: l.idioma === 'OUTRO' ? l.idioma_outro || undefined : undefined,
+      nivel: l.nivel,
+    })),
     mandatory_qualifications: v.mandatory_qualifications,
     differential_qualifications: v.differential_qualifications,
     benefits: v.benefits,
@@ -192,6 +209,8 @@ export default function JobFormPage() {
   const existing = useQuery({ queryKey: ['jobs', 'detail', id], queryFn: ({ signal }) => jobsApi.get(id!, signal), enabled: isEdit });
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: EMPTY });
   const questions = useFieldArray({ control: form.control, name: 'questions' });
+  const languageRequirements = useFieldArray({ control: form.control, name: 'language_requirements' });
+  const languageRequirementValues = form.watch('language_requirements');
   const { errors } = form.formState;
   const replaceQuestions = form.watch('replace_questions');
 
@@ -319,6 +338,58 @@ export default function JobFormPage() {
             <Field label="Inscrições até" error={errors.expires_at?.message} hint="Opcional.">
               {({ id: fid, invalid }) => <Input id={fid} type="date" invalid={invalid} {...form.register('expires_at')} />}
             </Field>
+            <Field label="Escolaridade exigida" error={errors.escolaridade_exigida?.message}>
+              {({ id: fid }) => (
+                <Select id={fid} {...form.register('escolaridade_exigida')}>
+                  <option value="">Não exigir</option>
+                  {ESCOLARIDADES.map((e) => <option key={e} value={e}>{ESCOLARIDADE_LABEL[e]}</option>)}
+                </Select>
+              )}
+            </Field>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="font-semibold">Idiomas exigidos (opcional)</h2>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={languageRequirements.fields.length >= 10}
+              onClick={() => languageRequirements.append({ idioma: 'INGLES', idioma_outro: '', nivel: 'BASICO' })}
+            >
+              Adicionar
+            </Button>
+          </div>
+          {languageRequirements.fields.length === 0 && <p className="text-sm text-muted">Nenhum idioma exigido.</p>}
+          <div className="flex flex-col gap-3">
+            {languageRequirements.fields.map((f, i) => (
+              <div key={f.id} className="grid gap-3 rounded-xl border border-border p-3 sm:grid-cols-[1fr_1fr_auto]">
+                <Field label="Idioma">
+                  {({ id: fid }) => (
+                    <Select id={fid} {...form.register(`language_requirements.${i}.idioma`)}>
+                      {IDIOMAS.map((idm) => <option key={idm} value={idm}>{IDIOMA_LABEL[idm]}</option>)}
+                    </Select>
+                  )}
+                </Field>
+                {languageRequirementValues?.[i]?.idioma === 'OUTRO' && (
+                  <Field label="Qual idioma?">
+                    {({ id: fid, invalid }) => <Input id={fid} maxLength={50} invalid={invalid} {...form.register(`language_requirements.${i}.idioma_outro`)} />}
+                  </Field>
+                )}
+                <Field label="Nível mínimo">
+                  {({ id: fid }) => (
+                    <Select id={fid} {...form.register(`language_requirements.${i}.nivel`)}>
+                      {NIVEIS_IDIOMA.map((n) => <option key={n} value={n}>{NIVEL_IDIOMA_LABEL[n]}</option>)}
+                    </Select>
+                  )}
+                </Field>
+                <div className="flex items-end">
+                  <Button type="button" size="sm" variant="danger-ghost" onClick={() => languageRequirements.remove(i)}>Remover</Button>
+                </div>
+              </div>
+            ))}
           </div>
         </Card>
 

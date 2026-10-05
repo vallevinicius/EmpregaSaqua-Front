@@ -9,7 +9,7 @@ import { Button, Field, Input, Textarea, cx } from '@/components/ui';
 import { ApiErrorAlert } from '@/components/feedback';
 import { CepLookup, cepToAddress } from '@/components/inputs';
 import { BuildingIcon, UserIcon } from '@/components/icons';
-import { formatCnpj } from '@/lib/format';
+import { formatCnpj, formatCpf } from '@/lib/format';
 import { onlyDigits } from '@/lib/safe';
 import { AuthShell } from './AuthShell';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
@@ -30,6 +30,11 @@ const schema = z
   .object({
     role: z.enum(['JOB_SEEKER', 'EMPLOYER']),
     email: z.email('E-mail inválido.').max(254),
+    username: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .regex(/^[a-z0-9_.]{3,30}$/, 'Usuário: 3 a 30 caracteres, só letras minúsculas, números, ponto ou underline.'),
     password: z
       .string()
       .min(8, 'Mínimo de 8 caracteres.')
@@ -46,6 +51,9 @@ const schema = z
     full_name: z.string().trim().max(150),
     address: z.string().trim().max(200),
     bio: z.string().trim().max(2000),
+    cpf: z.string().trim().refine(digitsOrEmpty(11, 11), 'CPF deve ter 11 dígitos.'),
+    nome_social: z.string().trim().max(150),
+    data_nascimento: z.string().refine((v) => v === '' || /^\d{4}-\d{2}-\d{2}$/.test(v), 'Data inválida.'),
   })
   .refine((v) => v.password === v.confirm, { path: ['confirm'], message: 'As senhas não conferem.' })
   .refine((v) => v.role !== 'EMPLOYER' || v.nome_fantasia.length >= 2, { path: ['nome_fantasia'], message: 'Informe o nome da empresa.' })
@@ -59,6 +67,7 @@ const ROLE_OPTIONS = [
 
 const EMPTY: Omit<Values, 'role'> = {
   email: '',
+  username: '',
   password: '',
   confirm: '',
   telefone: '',
@@ -68,6 +77,9 @@ const EMPTY: Omit<Values, 'role'> = {
   full_name: '',
   address: '',
   bio: '',
+  cpf: '',
+  nome_social: '',
+  data_nascimento: '',
 };
 
 export default function RegisterPage() {
@@ -85,12 +97,20 @@ export default function RegisterPage() {
     mutationFn: (v: Values) =>
       registerUser({
         email: v.email,
+        username: v.username,
         password: v.password,
         role: v.role,
         telefone: v.telefone ? onlyDigits(v.telefone) : undefined,
         ...(v.role === 'EMPLOYER'
           ? { nome_fantasia: v.nome_fantasia, cnpj: v.cnpj ? onlyDigits(v.cnpj) : undefined, endereco: v.endereco || undefined }
-          : { full_name: v.full_name, address: v.address || undefined, bio: v.bio || undefined }),
+          : {
+              full_name: v.full_name,
+              address: v.address || undefined,
+              bio: v.bio || undefined,
+              cpf: v.cpf ? onlyDigits(v.cpf) : undefined,
+              nome_social: v.nome_social || undefined,
+              data_nascimento: v.data_nascimento || undefined,
+            }),
       }),
     onSuccess: (s) => navigate(s.user.role === 'EMPLOYER' ? '/empresa/perfil' : homeFor(s.user.role), { replace: true }),
   });
@@ -142,6 +162,9 @@ export default function RegisterPage() {
         <Field label="E-mail" error={errors.email?.message} required>
           {({ id, describedBy, invalid }) => <Input id={id} type="email" autoComplete="email" placeholder="voce@email.com" aria-describedby={describedBy} invalid={invalid} {...form.register('email')} />}
         </Field>
+        <Field label="Nome de usuário" error={errors.username?.message} hint="3 a 30 caracteres: letras minúsculas, números, ponto ou underline. Usado para entrar, junto com e-mail ou CPF." required>
+          {({ id, describedBy, invalid }) => <Input id={id} autoComplete="username" placeholder="joana.silva" aria-describedby={describedBy} invalid={invalid} {...form.register('username')} />}
+        </Field>
         <Field label="Senha" error={errors.password?.message} hint="Mínimo 8 caracteres, com letras e números." required>
           {({ id, describedBy, invalid }) => <Input id={id} type="password" autoComplete="new-password" aria-describedby={describedBy} invalid={invalid} {...form.register('password')} />}
         </Field>
@@ -180,6 +203,23 @@ export default function RegisterPage() {
               <p className="-mt-1 text-sm font-semibold text-muted">Sobre você</p>
               <Field label="Nome completo" error={errors.full_name?.message} required>
                 {({ id, invalid }) => <Input id={id} maxLength={150} placeholder="Ex.: Joana da Silva" autoComplete="name" invalid={invalid} {...form.register('full_name')} />}
+              </Field>
+              <Field label="Nome social" error={errors.nome_social?.message} hint="Opcional. Se diferente do nome completo.">
+                {({ id, invalid }) => <Input id={id} maxLength={150} autoComplete="nickname" invalid={invalid} {...form.register('nome_social')} />}
+              </Field>
+              <Field label="CPF" error={errors.cpf?.message} hint="Opcional. Pode ser enviado depois.">
+                {({ id, invalid }) => (
+                  <Input
+                    id={id}
+                    inputMode="numeric"
+                    invalid={invalid}
+                    {...form.register('cpf')}
+                    onChange={(e) => form.setValue('cpf', formatCpf(e.target.value), { shouldValidate: true })}
+                  />
+                )}
+              </Field>
+              <Field label="Data de nascimento" error={errors.data_nascimento?.message} hint="Opcional.">
+                {({ id, invalid }) => <Input id={id} type="date" invalid={invalid} {...form.register('data_nascimento')} />}
               </Field>
               <Field label="Telefone / WhatsApp" error={errors.telefone?.message} hint="Opcional. Com DDD. Ex.: 22999999999">
                 {({ id, invalid }) => <Input id={id} type="tel" inputMode="tel" autoComplete="tel" invalid={invalid} {...form.register('telefone')} />}

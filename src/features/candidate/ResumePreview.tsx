@@ -1,5 +1,6 @@
+import type { Idioma, NivelIdioma } from '@/api/types';
 import { BriefcaseIcon, FileTextIcon, GraduationCapIcon, SparkleIcon, TranslateIcon } from '@/components/icons';
-import { formatMonthYear, formatPhone } from '@/lib/format';
+import { IDIOMA_LABEL, NIVEL_IDIOMA_LABEL, formatMonthYear, formatPhone } from '@/lib/format';
 import { safeAssetUrl } from '@/lib/safe';
 
 /** Mesma forma dos campos do formulário — mantida solta aqui para não importar o schema da página. */
@@ -8,7 +9,7 @@ export interface ResumePreviewValues {
   telefone: string;
   address: string;
   skills: string[];
-  languages: string[];
+  languages: { idioma: Idioma; idioma_outro?: string; nivel: NivelIdioma }[];
   experiences: { company: string; role: string; start_date: string; end_date?: string; description: string }[];
   educations: { institution: string; degree: string; field_of_study: string; start_date: string; end_date?: string }[];
 }
@@ -64,7 +65,9 @@ export function ResumePreview({ email, fullName, avatarUrl, values }: { email: s
               <PreviewSection icon={<TranslateIcon size={15} />} title="Idiomas">
                 <ul className="flex flex-wrap gap-1.5">
                   {values.languages.map((l, i) => (
-                    <li key={i} className="rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-medium">{l}</li>
+                    <li key={i} className="rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-medium">
+                      {l.idioma === 'OUTRO' && l.idioma_outro ? l.idioma_outro : IDIOMA_LABEL[l.idioma]} ({NIVEL_IDIOMA_LABEL[l.nivel]})
+                    </li>
                   ))}
                 </ul>
               </PreviewSection>

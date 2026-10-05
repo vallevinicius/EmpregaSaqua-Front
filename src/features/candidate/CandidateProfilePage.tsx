@@ -5,13 +5,13 @@ import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { applicationsApi, candidatesApi, jobsApi, uploadsApi, usersApi, type CandidateProfileInput } from '@/api/endpoints';
-import type { ApplicationStatus, CandidateProfile, Job, JobArea } from '@/api/types';
+import type { ApplicationStatus, CandidateProfile, Escolaridade, Idioma, Job, JobArea, NivelIdioma } from '@/api/types';
 import { useSession } from '@/auth/useAuth';
-import { Badge, Button, Card, CardSectionTitle, ConfirmDialog, Field, Input, PageHeader, PageLoader, Select, Skeleton, Textarea, buttonClass } from '@/components/ui';
+import { Badge, Button, Card, CardSectionTitle, Checkbox, ConfirmDialog, Field, Input, PageHeader, PageLoader, Select, Skeleton, Textarea, buttonClass } from '@/components/ui';
 import { ApiErrorAlert, SafeText, useToast } from '@/components/feedback';
 import { CepLookup, StringListInput, cepToAddress } from '@/components/inputs';
 import { BriefcaseIcon, CameraIcon, FileTextIcon, GraduationCapIcon, IdentificationCardIcon, SparkleIcon, TranslateIcon, TrashIcon } from '@/components/icons';
-import { APPLICATION_STATUS_LABEL, JOB_AREA_LABEL, formatDate } from '@/lib/format';
+import { APPLICATION_STATUS_LABEL, ESCOLARIDADE_LABEL, IDIOMA_LABEL, JOB_AREA_LABEL, NIVEL_IDIOMA_LABEL, formatDate } from '@/lib/format';
 import { IMAGE_TYPES, decodeEntities, onlyDigits, safeAssetUrl } from '@/lib/safe';
 import { errorMessage } from '@/lib/http';
 import { ResumePreview } from './ResumePreview';
@@ -20,6 +20,9 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 const month = z.string().regex(/^\d{4}-\d{2}$/, 'Use o formato AAAA-MM.');
 const optionalMonth = z.union([month, z.literal('')]).optional();
+const IDIOMAS = Object.keys(IDIOMA_LABEL) as [Idioma, ...Idioma[]];
+const NIVEIS_IDIOMA = Object.keys(NIVEL_IDIOMA_LABEL) as [NivelIdioma, ...NivelIdioma[]];
+const ESCOLARIDADES = Object.keys(ESCOLARIDADE_LABEL) as [Escolaridade, ...Escolaridade[]];
 
 const schema = z.object({
   full_name: z.string().trim().max(150),
@@ -29,8 +32,20 @@ const schema = z.object({
     .trim()
     .refine((v) => v === '' || /^\d{10,13}$/.test(onlyDigits(v)), 'Telefone com DDD (10 a 13 dígitos).'),
   address: z.string().trim().max(200),
+  genero: z.string(),
+  cargo_interesse: z.string().trim().max(150),
+  is_pcd: z.boolean(),
+  escolaridade: z.union([z.enum(ESCOLARIDADES), z.literal('')]),
   skills: z.array(z.string().trim().min(1).max(50)).max(30),
-  languages: z.array(z.string().trim().min(1).max(50)).max(20),
+  languages: z
+    .array(
+      z.object({
+        idioma: z.enum(IDIOMAS),
+        idioma_outro: z.string().trim().max(50),
+        nivel: z.enum(NIVEIS_IDIOMA),
+      }),
+    )
+    .max(20),
   area: z.string(),
   experiences: z
     .array(
@@ -57,7 +72,21 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 
-const EMPTY: Values = { full_name: '', bio: '', telefone: '', address: '', skills: [], languages: [], area: '', experiences: [], educations: [] };
+const EMPTY: Values = {
+  full_name: '',
+  bio: '',
+  telefone: '',
+  address: '',
+  genero: '',
+  cargo_interesse: '',
+  is_pcd: false,
+  escolaridade: '',
+  skills: [],
+  languages: [],
+  area: '',
+  experiences: [],
+  educations: [],
+};
 
 function toValues(p: CandidateProfile): Values {
   return {
@@ -65,8 +94,12 @@ function toValues(p: CandidateProfile): Values {
     bio: decodeEntities(p.bio),
     telefone: p.telefone ?? '',
     address: decodeEntities(p.address),
+    genero: p.genero ?? '',
+    cargo_interesse: decodeEntities(p.cargo_interesse ?? ''),
+    is_pcd: p.is_pcd,
+    escolaridade: p.escolaridade ?? '',
     skills: (p.skills ?? []).map(decodeEntities),
-    languages: (p.languages ?? []).map(decodeEntities),
+    languages: (p.languages ?? []).map((l) => ({ idioma: l.idioma, idioma_outro: decodeEntities(l.idioma_outro ?? ''), nivel: l.nivel })),
     area: p.area ?? '',
     experiences: (p.experiences ?? []).map((e) => ({
       company: decodeEntities(e.company),
@@ -95,6 +128,8 @@ export default function CandidateProfilePage() {
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: EMPTY });
   const exps = useFieldArray({ control: form.control, name: 'experiences' });
   const edus = useFieldArray({ control: form.control, name: 'educations' });
+  const langs = useFieldArray({ control: form.control, name: 'languages' });
+  const languageValues = useWatch({ control: form.control, name: 'languages' });
   const { errors, dirtyFields, isDirty } = form.formState;
   const liveValues = useWatch({ control: form.control });
 
@@ -111,8 +146,14 @@ export default function CandidateProfilePage() {
       if (dirtyFields.bio) body.bio = v.bio;
       if (dirtyFields.telefone) body.telefone = onlyDigits(v.telefone);
       if (dirtyFields.address) body.address = v.address;
+      if (dirtyFields.genero) body.genero = v.genero;
+      if (dirtyFields.cargo_interesse) body.cargo_interesse = v.cargo_interesse;
+      if (dirtyFields.is_pcd) body.is_pcd = v.is_pcd;
+      if (dirtyFields.escolaridade) body.escolaridade = (v.escolaridade || undefined) as Escolaridade | undefined;
       if (dirtyFields.skills) body.skills = v.skills;
-      if (dirtyFields.languages) body.languages = v.languages;
+      if (dirtyFields.languages) {
+        body.languages = v.languages.map((l) => ({ idioma: l.idioma, idioma_outro: l.idioma === 'OUTRO' ? l.idioma_outro || undefined : undefined, nivel: l.nivel }));
+      }
       if (dirtyFields.area) body.area = (v.area || undefined) as JobArea | undefined;
       if (dirtyFields.experiences) body.experiences = v.experiences.map((e) => ({ ...e, end_date: e.end_date || undefined }));
       if (dirtyFields.educations) body.educations = v.educations.map((e) => ({ ...e, end_date: e.end_date || undefined }));
@@ -166,6 +207,30 @@ export default function CandidateProfilePage() {
                   </Select>
                 )}
               </Field>
+              <Field label="Cargo de interesse" error={errors.cargo_interesse?.message}>
+                {({ id, invalid }) => <Input id={id} maxLength={150} placeholder="Ex.: Auxiliar administrativo" invalid={invalid} {...form.register('cargo_interesse')} />}
+              </Field>
+              <Field label="Gênero" error={errors.genero?.message}>
+                {({ id }) => (
+                  <Select id={id} {...form.register('genero')}>
+                    <option value="">Prefiro não informar</option>
+                    <option value="FEMININO">Feminino</option>
+                    <option value="MASCULINO">Masculino</option>
+                    <option value="OUTRO">Outro</option>
+                  </Select>
+                )}
+              </Field>
+              <Field label="Escolaridade" error={errors.escolaridade?.message} className="sm:col-span-2">
+                {({ id }) => (
+                  <Select id={id} {...form.register('escolaridade')}>
+                    <option value="">Não informar</option>
+                    {ESCOLARIDADES.map((e) => <option key={e} value={e}>{ESCOLARIDADE_LABEL[e]}</option>)}
+                  </Select>
+                )}
+              </Field>
+              <div className="sm:col-span-2">
+                <Checkbox label="Sou pessoa com deficiência (PCD)" {...form.register('is_pcd')} />
+              </div>
             </div>
           </Card>
 
@@ -179,12 +244,47 @@ export default function CandidateProfilePage() {
           </Card>
 
           <Card>
-            <CardSectionTitle icon={<TranslateIcon size={18} />} title="Idiomas" />
-            <Controller
-              control={form.control}
-              name="languages"
-              render={({ field }) => <StringListInput value={field.value} onChange={field.onChange} placeholder="Ex.: Inglês - Intermediário" maxItems={20} maxLength={50} />}
-            />
+            <div className="mb-5 flex items-center justify-between">
+              <CardSectionTitle icon={<TranslateIcon size={18} />} title="Idiomas" className="mb-0" />
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={langs.fields.length >= 20}
+                onClick={() => langs.append({ idioma: 'INGLES', idioma_outro: '', nivel: 'BASICO' })}
+              >
+                Adicionar
+              </Button>
+            </div>
+            {langs.fields.length === 0 && <EmptyHint text="Nenhum idioma adicionado ainda." />}
+            <div className="flex flex-col gap-3">
+              {langs.fields.map((f, i) => (
+                <div key={f.id} className="grid gap-3 rounded-xl border border-border p-3 sm:grid-cols-[1fr_1fr_auto]">
+                  <Field label="Idioma">
+                    {({ id }) => (
+                      <Select id={id} {...form.register(`languages.${i}.idioma`)}>
+                        {IDIOMAS.map((idm) => <option key={idm} value={idm}>{IDIOMA_LABEL[idm]}</option>)}
+                      </Select>
+                    )}
+                  </Field>
+                  {languageValues?.[i]?.idioma === 'OUTRO' && (
+                    <Field label="Qual idioma?">
+                      {({ id, invalid }) => <Input id={id} maxLength={50} invalid={invalid} {...form.register(`languages.${i}.idioma_outro`)} />}
+                    </Field>
+                  )}
+                  <Field label="Nível">
+                    {({ id }) => (
+                      <Select id={id} {...form.register(`languages.${i}.nivel`)}>
+                        {NIVEIS_IDIOMA.map((n) => <option key={n} value={n}>{NIVEL_IDIOMA_LABEL[n]}</option>)}
+                      </Select>
+                    )}
+                  </Field>
+                  <div className="flex items-end">
+                    <Button type="button" size="sm" variant="danger-ghost" onClick={() => langs.remove(i)}><TrashIcon size={14} /> Remover</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </Card>
 
           <Card>
@@ -256,7 +356,7 @@ export default function CandidateProfilePage() {
               telefone: liveValues.telefone ?? '',
               address: liveValues.address ?? '',
               skills: (liveValues.skills ?? []).filter((s): s is string => !!s),
-              languages: (liveValues.languages ?? []).filter((s): s is string => !!s),
+              languages: (liveValues.languages ?? []).filter((l): l is Values['languages'][number] => !!l?.idioma),
               experiences: (liveValues.experiences ?? []).filter((e): e is Values['experiences'][number] => !!e?.company || !!e?.role),
               educations: (liveValues.educations ?? []).filter((e): e is Values['educations'][number] => !!e?.institution || !!e?.degree),
             }}

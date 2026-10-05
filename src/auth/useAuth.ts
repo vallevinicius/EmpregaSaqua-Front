@@ -10,8 +10,9 @@ export function useSession(): Session | null {
 export function useAuthActions() {
   const qc = useQueryClient();
   return {
-    async login(email: string, password: string) {
-      const res = await authApi.login(email.trim().toLowerCase(), password);
+    /** identifier aceita e-mail, nome de usuário ou CPF. */
+    async login(identifier: string, password: string) {
+      const res = await authApi.login(identifier.trim().toLowerCase(), password);
       qc.clear(); // nunca reaproveitar cache de outro usuário
       return setSession(res.access_token);
     },
