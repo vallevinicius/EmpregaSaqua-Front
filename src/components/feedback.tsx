@@ -1,7 +1,8 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ApiError } from '@/lib/http';
 import { Alert, Button, cx } from './ui';
 import { decodeEntities } from '@/lib/safe';
+import { ClockIcon } from './icons';
 
 /** Texto vindo da API: decodifica entidades e renderiza SEMPRE como texto (nunca innerHTML). */
 export function SafeText({ children, className, as: As = 'span' }: { children: string | null | undefined; className?: string; as?: 'span' | 'p' | 'div' }) {
@@ -36,6 +37,39 @@ export function isPendingEndpoint(err: unknown): boolean {
   return err instanceof ApiError && err.status === 404;
 }
 
+export function isRateLimited(err: unknown): err is ApiError {
+  return err instanceof ApiError && err.code === 'TOO_MANY_REQUESTS';
+}
+
+/** Segundos restantes de um rate limit, contando pra baixo a cada 1s até chegar em 0. */
+function useCountdown(seconds: number | undefined): number {
+  const [remaining, setRemaining] = useState(seconds ?? 0);
+  useEffect(() => {
+    setRemaining(seconds ?? 0);
+    if (!seconds) return;
+    const id = setInterval(() => setRemaining((r) => Math.max(0, r - 1)), 1000);
+    return () => clearInterval(id);
+  }, [seconds]);
+  return remaining;
+}
+
+function formatCountdown(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return rest === 0 ? `${minutes}min` : `${minutes}min ${rest}s`;
+}
+
+/** Corpo (ícone + texto) comum ao card e ao alerta inline de rate limit. */
+function RateLimitMessage({ remaining }: { remaining: number }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <ClockIcon size={16} />
+      {remaining > 0 ? `Aguarde ${formatCountdown(remaining)} e tente novamente.` : 'Já pode tentar novamente.'}
+    </span>
+  );
+}
+
 export function ErrorState({
   error,
   onRetry,
@@ -45,7 +79,23 @@ export function ErrorState({
   onRetry?: () => void;
   pending?: { endpoint: string; feature: string };
 }) {
+  const remaining = useCountdown(isRateLimited(error) ? error.retryAfterSeconds : undefined);
   if (pending && isPendingEndpoint(error)) return <PendingEndpoint {...pending} />;
+
+  if (isRateLimited(error)) {
+    const waiting = remaining > 0;
+    return (
+      <Alert tone="warning" title="Muitas tentativas">
+        <RateLimitMessage remaining={remaining} />
+        {onRetry && (
+          <Button size="sm" variant="secondary" className="mt-3" onClick={onRetry} disabled={waiting}>
+            {waiting ? `Tentar novamente (${formatCountdown(remaining)})` : 'Tentar novamente'}
+          </Button>
+        )}
+      </Alert>
+    );
+  }
+
   const msg = error instanceof ApiError ? error.message : 'Não foi possível carregar os dados.';
   return (
     <Alert tone="danger" title="Algo deu errado">
@@ -61,7 +111,15 @@ export function ErrorState({
 
 /** Erros de validação do class-validator (array de mensagens). */
 export function ApiErrorAlert({ error }: { error: unknown }) {
+  const remaining = useCountdown(isRateLimited(error) ? error.retryAfterSeconds : undefined);
   if (!error) return null;
+  if (isRateLimited(error)) {
+    return (
+      <Alert tone="warning">
+        <RateLimitMessage remaining={remaining} />
+      </Alert>
+    );
+  }
   if (error instanceof ApiError && error.details.length > 1) {
     return (
       <Alert tone="danger" title="Corrija os campos abaixo">

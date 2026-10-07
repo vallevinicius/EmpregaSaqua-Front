@@ -15,14 +15,17 @@ export class ApiError extends Error {
   readonly code: string;
   readonly details: string[];
   readonly path: string;
+  /** Só presente em 429 (rate limit): segundos até poder tentar de novo. */
+  readonly retryAfterSeconds?: number;
 
-  constructor(status: number, message: string, opts: { code?: string; details?: string[]; path: string }) {
+  constructor(status: number, message: string, opts: { code?: string; details?: string[]; path: string; retryAfterSeconds?: number }) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = opts.code ?? 'UNKNOWN';
     this.details = opts.details ?? [];
     this.path = opts.path;
+    this.retryAfterSeconds = opts.retryAfterSeconds;
   }
 
   get isNetwork() {
@@ -91,12 +94,14 @@ async function parseError(res: Response, path: string): Promise<ApiError> {
   let message = statusFallbackMessage(res.status);
   let details: string[] = [];
   let code: string | undefined;
+  let retryAfterSeconds: number | undefined;
 
   const ct = res.headers.get('content-type') ?? '';
   if (ct.includes('application/json')) {
     try {
-      const body = (await res.json()) as { message?: unknown; code?: unknown };
+      const body = (await res.json()) as { message?: unknown; code?: unknown; retryAfterSeconds?: unknown };
       if (typeof body.code === 'string') code = body.code;
+      if (typeof body.retryAfterSeconds === 'number') retryAfterSeconds = body.retryAfterSeconds;
       if (res.status < 500) {
         if (Array.isArray(body.message)) {
           details = body.message.filter((m): m is string => typeof m === 'string').slice(0, 10);
@@ -109,7 +114,7 @@ async function parseError(res: Response, path: string): Promise<ApiError> {
       /* corpo inválido: mantém fallback */
     }
   }
-  return new ApiError(res.status, message, { code, details, path });
+  return new ApiError(res.status, message, { code, details, path, retryAfterSeconds });
 }
 
 export async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
