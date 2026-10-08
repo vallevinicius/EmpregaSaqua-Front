@@ -7,6 +7,7 @@ import { ErrorState, SafeText, useToast } from '@/components/feedback';
 import { VERIFICATION_LABEL, formatDate } from '@/lib/format';
 import { errorMessage } from '@/lib/http';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { VerificationDocumentButton } from './VerificationDocumentButton';
 
 const STATUS_TONE: Record<VerificationStatus, 'warning' | 'success' | 'danger'> = {
   PENDING: 'warning',
@@ -72,7 +73,7 @@ export default function AdminCompaniesPage() {
                   </p>
                   {c.endereco && <p className="text-sm text-muted"><SafeText>{c.endereco}</SafeText></p>}
                   {c.verification_document_url ? (
-                    <p className="text-sm">Documento enviado (acesso via endpoint autenticado, ver contrato)</p>
+                    <div className="mt-1"><VerificationDocumentButton companyId={c.id} /></div>
                   ) : (
                     <p className="text-sm text-warning">Sem documento enviado</p>
                   )}

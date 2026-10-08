@@ -14,6 +14,7 @@ import type {
   ChatRoomSummary,
   CompanyProfile,
   ContractType,
+  DocumentUploadResponse,
   EmployerAnalytics,
   Education,
   Escolaridade,
@@ -243,7 +244,7 @@ export const uploadsApi = {
   verificationDocument: (file: File) => {
     const fd = new FormData();
     fd.append('file', file);
-    return request<UploadResponse>('/uploads/verification-document', { method: 'POST', body: fd, timeoutMs: 60_000 });
+    return request<DocumentUploadResponse>('/uploads/verification-document', { method: 'POST', body: fd, timeoutMs: 60_000 });
   },
   avatar: (file: File) => {
     const fd = new FormData();
@@ -323,6 +324,9 @@ export const adminApi = {
     request<Paginated<AdminCompany>>('/admin/companies', { query: params, signal }),
   listUsers: (params: { role?: Role | ''; page: number; limit: number }, signal?: AbortSignal) =>
     request<Paginated<AdminUser>>('/admin/users', { query: params, signal }),
+  /** Documento de verificação (CNPJ/contrato social) — só sai por aqui, autenticado como ADMIN. */
+  verificationDocument: (companyId: string) =>
+    request<Blob>(`/admin/companies/${seg(companyId)}/verification-document`, { responseType: 'blob', timeoutMs: 30_000 }),
 };
 
 // ---------- Chat (REST) ----------

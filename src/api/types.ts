@@ -252,6 +252,13 @@ export interface UploadResponse {
   size_bytes: number;
 }
 
+/** Documento de verificação não devolve URL: fica fora do storage público — ver GET /admin/companies/:id/verification-document. */
+export interface DocumentUploadResponse {
+  message: string;
+  filename: string;
+  size_bytes: number;
+}
+
 export interface ChatMessage {
   id: string;
   room_id: string;

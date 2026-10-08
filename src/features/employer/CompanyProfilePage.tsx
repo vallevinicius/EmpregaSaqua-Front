@@ -184,6 +184,7 @@ function LogoUpload({ currentUrl, name }: { currentUrl?: string | null; name: st
 
 function VerificationUpload({ status }: { status?: string }) {
   const toast = useToast();
+  const qc = useQueryClient();
   const [localError, setLocalError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const upload = useMutation({
@@ -191,6 +192,8 @@ function VerificationUpload({ status }: { status?: string }) {
     onSuccess: () => {
       setSent(true);
       toast('Documento enviado. Aguarde a verificação.');
+      // Reenvio volta a empresa pra PENDING no back (ver UploadsController) — reflete aqui.
+      void qc.invalidateQueries({ queryKey: ['company', 'me'] });
     },
   });
 

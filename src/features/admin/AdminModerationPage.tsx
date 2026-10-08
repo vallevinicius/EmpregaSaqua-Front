@@ -7,6 +7,7 @@ import { ErrorState, SafeText, useToast } from '@/components/feedback';
 import { CONTRACT_LABEL, WORK_MODEL_LABEL, formatDate } from '@/lib/format';
 import { UUID_RE } from './uuid';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { VerificationDocumentButton } from './VerificationDocumentButton';
 
 type Tab = 'jobs' | 'companies';
 
@@ -115,7 +116,7 @@ function PendingCompanies() {
                     {c.user?.email ?? '-'} · CNPJ {c.cnpj ?? 'não informado'} · {formatDate(c.created_at)}
                   </p>
                   {c.verification_document_url ? (
-                    <p className="text-sm">Documento enviado (acesso via endpoint autenticado, ver contrato)</p>
+                    <div className="mt-1"><VerificationDocumentButton companyId={c.id} /></div>
                   ) : (
                     <p className="text-sm text-warning">Sem documento enviado</p>
                   )}

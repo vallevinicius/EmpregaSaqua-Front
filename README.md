@@ -12,7 +12,7 @@ npm run dev                 # http://localhost:5173 (proxy /api, /uploads e /soc
 
 Outros scripts: `npm run build` (typecheck + build), `npm test` (testes dos utilitários de segurança), `npm run preview` (build com os headers de CSP de produção), `npm run audit`.
 
-> Leia **BACKEND_CONTRACT.md** antes de subir para produção: há falhas críticas no back (escalada para ADMIN no registro, `password_hash` vazando em includes, documentos de CNPJ públicos) e endpoints que o front já consome mas que ainda não existem.
+> Leia **BACKEND_CONTRACT.md** antes de subir para produção: lista o que o front já consome, o que ainda espera e não existe, e o histórico de correções de segurança (a última leva — escalada para ADMIN no registro, `password_hash` em includes, documentos de verificação de empresa publicamente acessíveis — foi corrigida e verificada; ver seção 1).
 
 ## Áreas
 
@@ -45,7 +45,7 @@ src/
 | JWT em memória + `sessionStorage` | Menor janela que `localStorage` (escopo da aba); sobrevive a F5. | XSS ainda lê o token. Solução real é cookie HttpOnly no back. |
 | Nenhum `dangerouslySetInnerHTML`; `SafeText` decodifica entidades e renderiza como texto | O back devolve texto passado por `sanitize-html` (entidades codificadas). | Nenhuma formatação rica em descrições. |
 | `safeHttpUrl` / `safeAssetUrl` / `whatsappLink` / `mailtoLink` em todo `href`/`src` dinâmico | O escape do React não cobre `javascript:` em atributos. | Links de currículo só http(s). |
-| `sanitizeJob` descarta `expected_answer` e `password_hash` | Não propagar dado sensível em estado/devtools. | Mitigação: o dado ainda trafega na rede até o back corrigir. |
+| `sanitizeJob` remapeia `questions`/`employer` pros campos públicos antes de guardar em estado | Defesa em profundidade: mesmo que o back um dia inclua um campo sensível (`eliminates` do gabarito, `password_hash`) numa resposta, não propaga pro estado/devtools do front. | Hoje o back já filtra isso na origem (ver BACKEND_CONTRACT.md); esta é só a segunda camada. |
 | Proxy same-origin (dev e prod) | Elimina dependência do CORS `*` do back; cookies futuros com `SameSite=Strict`. | Exige reverse proxy (exemplo em `deploy/nginx.conf`). |
 | CSP estrita sem `unsafe-inline` (preview/prod) | Barreira de defesa em profundidade contra XSS. | Em `npm run dev` não há CSP (HMR precisa de inline). |
 | WS autenticado via `handshake.auth`, só transporte websocket | Token não vai para query string/logs. | Sem fallback para long-polling. |
