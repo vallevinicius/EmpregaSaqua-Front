@@ -113,9 +113,12 @@ function PendingCompanies() {
                     {c.user?.email ?? '-'} · CNPJ {c.cnpj ?? 'não informado'} · {formatDate(c.created_at)}
                   </p>
                   {c.verification_document_url ? (
-                    <p className="text-sm">Documento enviado (acesso via endpoint autenticado, ver contrato)</p>
+                    <div className="mt-2 flex items-center gap-3">
+                      <span className="text-xs text-muted">Documento disponível</span>
+                      <VerificationDocumentButton companyId={c.id} />
+                    </div>
                   ) : (
-                    <p className="text-sm text-warning">Sem documento enviado</p>
+                    <p className="mt-1 text-sm text-warning">Sem documento enviado</p>
                   )}
                 </div>
                 <ApproveReject disabled={act.isPending} onApprove={() => act.mutate({ id: c.id, approve: true })} onReject={() => act.mutate({ id: c.id, approve: false })} />
@@ -130,6 +133,35 @@ function PendingCompanies() {
   );
 }
 
+function VerificationDocumentButton({ companyId }: { companyId: string }) {
+  const [loading, setLoading] = useState(false);
+  const toast = useToast();
+
+  const handleOpen = async () => {
+    setLoading(true);
+    try {
+      const blob = await adminApi.getVerificationDocument(companyId);
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, '_blank', 'noopener,noreferrer');
+      if (!win) {
+        toast('Permita pop-ups no navegador para visualizar o documento.', 'primary');
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      toast('Não foi possível carregar o documento.', 'danger');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button size="sm" variant="secondary" onClick={handleOpen} loading={loading}>
+      Ver documento
+    </Button>
+  );
+}
+
+
 function ApproveReject({ onApprove, onReject, disabled }: { onApprove: () => void; onReject: () => void; disabled?: boolean }) {
   return (
     <div className="flex gap-2">
@@ -138,6 +170,7 @@ function ApproveReject({ onApprove, onReject, disabled }: { onApprove: () => voi
     </div>
   );
 }
+
 
 /** Funciona HOJE com os endpoints existentes (PATCH approve/reject por ID). */
 function ManualAction({ kind }: { kind: Tab }) {

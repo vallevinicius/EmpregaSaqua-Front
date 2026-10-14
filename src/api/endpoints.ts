@@ -248,6 +248,9 @@ export const analyticsApi = {
 export const adminApi = {
   approveCompany: (id: string) => request<CompanyProfile>(`/admin/companies/${seg(id)}/approve`, { method: 'PATCH' }),
   rejectCompany: (id: string) => request<CompanyProfile>(`/admin/companies/${seg(id)}/reject`, { method: 'PATCH' }),
+  getVerificationDocument: (id: string, signal?: AbortSignal) =>
+    request<Blob>(`/admin/companies/${seg(id)}/verification-document`, { responseType: 'blob', timeoutMs: 30_000, signal }),
+
   approveJob: (id: string) => request<Job>(`/admin/jobs/${seg(id)}/approve`, { method: 'PATCH' }),
   rejectJob: (id: string) => request<Job>(`/admin/jobs/${seg(id)}/reject`, { method: 'PATCH' }),
   updateJob: (id: string, input: Partial<JobInput> & { status?: JobStatus }) =>
