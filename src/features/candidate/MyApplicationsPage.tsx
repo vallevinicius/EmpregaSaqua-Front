@@ -26,9 +26,8 @@ export default function MyApplicationsPage() {
 
   const apps = useQuery({ queryKey: ['applications', 'mine'], queryFn: ({ signal }) => applicationsApi.mine(signal) });
 
-  // GET /applications não inclui a vaga: buscamos cada uma (cacheadas). Trade-off: N requisições.
-  // O ideal é o back fazer include('job') — ver BACKEND_CONTRACT.md.
   const jobIds = [...new Set((apps.data ?? []).map((a) => a.job_id))];
+
   const jobs = useQueries({
     queries: jobIds.map((id) => ({
       queryKey: ['jobs', 'detail', id],

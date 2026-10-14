@@ -12,8 +12,6 @@ npm run dev                 # http://localhost:5173 (proxy /api, /uploads e /soc
 
 Outros scripts: `npm run build` (typecheck + build), `npm test` (testes dos utilitários de segurança), `npm run preview` (build com os headers de CSP de produção), `npm run audit`.
 
-> Leia **BACKEND_CONTRACT.md** antes de subir para produção: há falhas críticas no back (escalada para ADMIN no registro, `password_hash` vazando em includes, documentos de CNPJ públicos) e endpoints que o front já consome mas que ainda não existem.
-
 ## Áreas
 
 | Perfil | Rotas |
@@ -46,7 +44,8 @@ src/
 | Nenhum `dangerouslySetInnerHTML`; `SafeText` decodifica entidades e renderiza como texto | O back devolve texto passado por `sanitize-html` (entidades codificadas). | Nenhuma formatação rica em descrições. |
 | `safeHttpUrl` / `safeAssetUrl` / `whatsappLink` / `mailtoLink` em todo `href`/`src` dinâmico | O escape do React não cobre `javascript:` em atributos. | Links de currículo só http(s). |
 | `sanitizeJob` descarta `expected_answer` e `password_hash` | Não propagar dado sensível em estado/devtools. | Mitigação: o dado ainda trafega na rede até o back corrigir. |
-| Proxy same-origin (dev e prod) | Elimina dependência do CORS `*` do back; cookies futuros com `SameSite=Strict`. | Exige reverse proxy (exemplo em `deploy/nginx.conf`). |
+| Proxy same-origin (dev e prod) | Elimina dependência do CORS `*` do back; cookies futuros com `SameSite=Strict`. | Exige reverse proxy no ambiente de produção. |
+
 | CSP estrita sem `unsafe-inline` (preview/prod) | Barreira de defesa em profundidade contra XSS. | Em `npm run dev` não há CSP (HMR precisa de inline). |
 | WS autenticado via `handshake.auth`, só transporte websocket | Token não vai para query string/logs. | Sem fallback para long-polling. |
 | Redirect pós-login validado (`safeRedirect`) | Evita open redirect via `state.from`. | — |

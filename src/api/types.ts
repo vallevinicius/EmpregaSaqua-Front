@@ -187,8 +187,9 @@ export interface ChatMessage {
   created_at: string;
 }
 
-/** Contrato proposto (endpoint pendente no back) — ver BACKEND_CONTRACT.md */
+/** Resumo de sala de conversa */
 export interface ChatRoomSummary {
+
   id: string;
   job_id: string;
   candidate_id: string;

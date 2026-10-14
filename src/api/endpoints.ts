@@ -29,9 +29,9 @@ import type {
 
 /**
  * Camada única de acesso à API. Componentes nunca chamam fetch direto.
- * Endpoints marcados com @pending NÃO existem no back hoje — o contrato está em BACKEND_CONTRACT.md.
- * Enquanto não existirem, retornam 404 e a UI mostra <PendingEndpoint/>.
+ * Endpoints marcados com @pending retornam 404 enquanto não forem disponibilizados pela API.
  */
+
 
 // ---------- mapeadores defensivos ----------
 

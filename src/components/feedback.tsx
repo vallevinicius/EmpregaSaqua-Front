@@ -23,14 +23,14 @@ export function SafeParagraphs({ text, className }: { text: string | null | unde
 }
 
 /** Mostrado quando a UI depende de um endpoint que o back ainda não expõe. */
-export function PendingEndpoint({ endpoint, feature }: { endpoint: string; feature: string }) {
+export function PendingEndpoint({ feature }: { endpoint?: string; feature: string }) {
   return (
-    <Alert tone="warning" title={`${feature} indisponível`}>
-      Esta tela depende de <code className="rounded bg-black/5 px-1 font-mono text-xs dark:bg-white/10">{endpoint}</code>, que
-      ainda não existe no backend. Veja <strong>BACKEND_CONTRACT.md</strong> no repositório do front.
+    <Alert tone="warning" title={`${feature} em desenvolvimento`}>
+      Esta funcionalidade está sendo preparada e será liberada em breve.
     </Alert>
   );
 }
+
 
 export function isPendingEndpoint(err: unknown): boolean {
   return err instanceof ApiError && err.status === 404;

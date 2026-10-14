@@ -7,8 +7,9 @@ import type { Role, SessionUser } from '@/api/types';
  * - Por quê não localStorage: persiste indefinidamente e é compartilhado entre abas,
  *   aumentando a janela de exfiltração em caso de XSS.
  * - Por quê não só memória: F5 derrubaria a sessão (UX ruim) e o back não tem refresh token.
- * - O que isso piora: qualquer XSS na origem ainda lê o sessionStorage. A solução correta é o back
- *   emitir o JWT em cookie HttpOnly + SameSite=Strict (+ CSRF token) — ver BACKEND_CONTRACT.md.
+ * - O que isso piora: qualquer XSS na origem ainda lê o sessionStorage. A solução a longo prazo é o back
+ *   emitir o JWT em cookie HttpOnly + SameSite=Strict (+ CSRF token).
+
  *
  * O payload do JWT é lido só para UX (role/expiração). Autorização real é SEMPRE do back.
  */

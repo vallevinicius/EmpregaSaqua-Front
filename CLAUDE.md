@@ -12,7 +12,8 @@ React 19, Vite 8, TypeScript 5 (strict + noUncheckedIndexedAccess), Tailwind v4 
 - Texto vindo da API: `<SafeText>` / `<SafeParagraphs>`. Proibido `dangerouslySetInnerHTML`.
 - `href`/`src` dinâmicos: só via `safeHttpUrl`, `safeAssetUrl`, `whatsappLink`, `mailtoLink`.
 - Schemas zod espelham os DTOs do back (MaxLength, ArrayMaxSize). Ao mudar DTO no back, atualizar aqui.
-- Endpoints ainda inexistentes: marcar `@pending` em `endpoints.ts`, tratar 404 com `ErrorState pending={...}` e documentar em `BACKEND_CONTRACT.md`.
+- Endpoints ainda inexistentes: marcar `@pending` em `endpoints.ts` e tratar 404 com `ErrorState pending={...}`.
+
 - Query keys: `['jobs', ...]`, `['applications', ...]`, `['candidate','me']`, `['company','me']`, `['talent-pool', ...]`, `['analytics', role]`, `['admin', ...]`, `['chat', ...]`.
 - Roles: `JOB_SEEKER`, `EMPLOYER`, `ADMIN`. Front nunca envia `ADMIN` no cadastro.
 

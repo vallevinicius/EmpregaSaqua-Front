@@ -46,9 +46,10 @@ export default function JobDetailPage() {
   const job = query.data;
   const isOwner = session?.user.id === job.employer_id;
   const isAdmin = session?.user.role === 'ADMIN';
-  // O GET /jobs/:id do back devolve vagas em qualquer status (inclusive removidas). Escondemos no front
-  // para quem não é dono/admin — o fix definitivo é no back (ver BACKEND_CONTRACT.md).
   if ((job.status !== 'ACTIVE' || job.deleted_at) && !isOwner && !isAdmin) return <Unavailable />;
+
+
+
 
   const company = job.employer?.company_profile?.nome_fantasia ?? 'Empresa';
   const wa = whatsappLink(job.contact_whatsapp, `Olá! Vi a vaga "${job.title}" no EmpregaSaqua.`);
