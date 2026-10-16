@@ -57,7 +57,6 @@ src/
 | JWT in memory + `sessionStorage` | Smaller window than `localStorage` (tab scope); survives F5. | XSS can still read it. The real fix is an HttpOnly cookie on the API. |
 | No `dangerouslySetInnerHTML`; `SafeText` decodes entities and renders text | The API returns text passed through `sanitize-html`. | No rich formatting in descriptions. |
 | `safeHttpUrl` / `safeAssetUrl` / `whatsappLink` / `mailtoLink` on every dynamic `href`/`src` | React escaping does not cover `javascript:` URLs in attributes. | Résumé links must be http(s). |
-| `sanitizeJob` drops `expected_answer` and `password_hash` | Keep sensitive data out of state/devtools. | Mitigation only: the data still travels until the API is fixed. |
 | Same-origin proxy (dev and prod) | Removes the dependency on the API's `CORS *`; enables `SameSite=Strict` cookies later. | Requires a reverse proxy in production. |
 | Strict CSP without `unsafe-inline` (preview/prod) | Defense in depth against XSS. | No CSP in `npm run dev` (HMR needs inline). |
 | WebSocket authenticated via `handshake.auth`, websocket transport only | Token never goes to query strings/logs. | No long-polling fallback. |
