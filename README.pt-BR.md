@@ -47,7 +47,6 @@ src/
 | JWT em memória + `sessionStorage` | Menor janela que `localStorage` (escopo da aba); sobrevive a F5. | XSS ainda lê o token. Solução real é cookie HttpOnly no back. |
 | Nenhum `dangerouslySetInnerHTML`; `SafeText` decodifica entidades e renderiza como texto | O back devolve texto passado por `sanitize-html` (entidades codificadas). | Nenhuma formatação rica em descrições. |
 | `safeHttpUrl` / `safeAssetUrl` / `whatsappLink` / `mailtoLink` em todo `href`/`src` dinâmico | O escape do React não cobre `javascript:` em atributos. | Links de currículo só http(s). |
-| `sanitizeJob` descarta `expected_answer` e `password_hash` | Não propagar dado sensível em estado/devtools. | Mitigação: o dado ainda trafega na rede até o back corrigir. |
 | Proxy same-origin (dev e prod) | Elimina dependência do CORS `*` do back; cookies futuros com `SameSite=Strict`. | Exige reverse proxy no ambiente de produção. |
 
 | CSP estrita sem `unsafe-inline` (preview/prod) | Barreira de defesa em profundidade contra XSS. | Em `npm run dev` não há CSP (HMR precisa de inline). |
