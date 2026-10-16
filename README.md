@@ -1,58 +1,106 @@
-# EmpregaSaqua — Front
+<div align="center">
 
-SPA em React 19 + Vite + TypeScript + Tailwind v4 para o [EmpregaSaqua-Back](https://github.com/viniciusdiller/EmpregaSaqua-Back).
+# EmpregaSaqua — Web
 
-## Rodando
+**Job board for Saquarema, Brazil: candidates, employers and moderation in one SPA.**
 
-```bash
-cp .env.example .env        # ajuste BACKEND_URL se o back não estiver em :3009
-npm ci
-npm run dev                 # http://localhost:5173 (proxy /api, /uploads e /socket.io → back)
-```
+🇧🇷 [Leia em português](README.pt-BR.md)
 
-Outros scripts: `npm run build` (typecheck + build), `npm test` (testes dos utilitários de segurança), `npm run preview` (build com os headers de CSP de produção), `npm run audit`.
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white) ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white) ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white) ![TanStack Query](https://img.shields.io/badge/TanStack_Query-5-FF4154?logo=reactquery&logoColor=white) ![Vitest](https://img.shields.io/badge/Vitest-tested-6E9F18?logo=vitest&logoColor=white)
 
-## Áreas
+</div>
 
-| Perfil | Rotas |
+## About
+
+Single-page app for EmpregaSaqua, a local job board. Job seekers search openings, apply and manage their résumé; employers publish jobs, review candidates and browse a talent pool; admins moderate content and users. Candidates and employers can chat in real time.
+
+The API is a separate NestJS + Prisma service (EmpregaSaqua-Back, default port 3009).
+
+## Areas
+
+| Role | Routes |
 |---|---|
-| Público | `/` (vagas + filtros na URL), `/vagas/:id`, `/entrar`, `/cadastro` |
-| Candidato | `/candidato/candidaturas`, `/candidato/perfil` (currículo + PDF + excluir conta), `/mensagens` |
-| Empresa | `/empresa` (painel), `/empresa/vagas` (+ `nova`, `:id/editar`, `:id/candidatos`), `/empresa/talentos`, `/empresa/banco-de-talentos`, `/empresa/perfil` (dados, logo, documento), `/mensagens` |
+| Public | `/` (jobs + filters in the URL), `/vagas/:id`, `/entrar`, `/cadastro` |
+| Candidate | `/candidato/candidaturas`, `/candidato/perfil` (résumé + PDF + delete account), `/mensagens` |
+| Employer | `/empresa` (dashboard), `/empresa/vagas` (+ `nova`, `:id/editar`, `:id/candidatos`), `/empresa/talentos`, `/empresa/banco-de-talentos`, `/empresa/perfil`, `/mensagens` |
 | Admin | `/admin`, `/admin/moderacao`, `/admin/usuarios` |
 
-## Arquitetura
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| UI | React 19, Vite 8, TypeScript 5 (`strict` + `noUncheckedIndexedAccess`), Tailwind CSS 4 |
+| Routing / data | React Router 7, TanStack Query 5 |
+| Forms | React Hook Form 7 + Zod 4 (limits mirror the API DTOs) |
+| Real time | socket.io-client 4 |
+| Tests | Vitest |
+
+## Architecture
 
 ```
 src/
-  api/          types.ts (espelha contract.prisma) · endpoints.ts (única camada de acesso à API)
-  auth/         session.ts (token + expiração) · useAuth · guards (UX, não segurança)
-  lib/          http.ts (fetch com timeout/erros) · safe.ts (URLs/entidades) · format.ts
-  components/   ui/ (design system) · feedback (erros, toasts, texto seguro) · inputs · charts · layout
+  api/          types.ts (mirrors the API contract) · endpoints.ts (the only API access layer)
+  auth/         session.ts (token + expiry) · useAuth · route guards (UX only)
+  lib/          http.ts (fetch with timeout/errors) · safe.ts (URLs/entities) · format.ts
+  components/   ui/ (design system) · feedback (errors, toasts, safe text) · inputs · charts · layout
   features/     public · auth · candidate · employer · admin · chat
 ```
 
-- **Estado de servidor**: TanStack Query (cache, `keepPreviousData` na paginação, retry só em 5xx/rede com backoff).
-- **Formulários**: react-hook-form + zod, com limites espelhando os DTOs do back.
-- **Code-splitting** por página (`React.lazy`).
+- **Server state** with TanStack Query (cache, `keepPreviousData` on pagination, retries only on 5xx/network with backoff).
+- **Forms** with React Hook Form + Zod.
+- **Code splitting** per page (`React.lazy`).
 
-## Decisões de segurança (e o que cada uma piora)
+## Security decisions (and what each one costs)
 
-| Decisão | Por quê | Custo |
+| Decision | Why | Cost |
 |---|---|---|
-| JWT em memória + `sessionStorage` | Menor janela que `localStorage` (escopo da aba); sobrevive a F5. | XSS ainda lê o token. Solução real é cookie HttpOnly no back. |
-| Nenhum `dangerouslySetInnerHTML`; `SafeText` decodifica entidades e renderiza como texto | O back devolve texto passado por `sanitize-html` (entidades codificadas). | Nenhuma formatação rica em descrições. |
-| `safeHttpUrl` / `safeAssetUrl` / `whatsappLink` / `mailtoLink` em todo `href`/`src` dinâmico | O escape do React não cobre `javascript:` em atributos. | Links de currículo só http(s). |
-| `sanitizeJob` descarta `expected_answer` e `password_hash` | Não propagar dado sensível em estado/devtools. | Mitigação: o dado ainda trafega na rede até o back corrigir. |
-| Proxy same-origin (dev e prod) | Elimina dependência do CORS `*` do back; cookies futuros com `SameSite=Strict`. | Exige reverse proxy no ambiente de produção. |
+| JWT in memory + `sessionStorage` | Smaller window than `localStorage` (tab scope); survives F5. | XSS can still read it. The real fix is an HttpOnly cookie on the API. |
+| No `dangerouslySetInnerHTML`; `SafeText` decodes entities and renders text | The API returns text passed through `sanitize-html`. | No rich formatting in descriptions. |
+| `safeHttpUrl` / `safeAssetUrl` / `whatsappLink` / `mailtoLink` on every dynamic `href`/`src` | React escaping does not cover `javascript:` URLs in attributes. | Résumé links must be http(s). |
+| `sanitizeJob` drops `expected_answer` and `password_hash` | Keep sensitive data out of state/devtools. | Mitigation only: the data still travels until the API is fixed. |
+| Same-origin proxy (dev and prod) | Removes the dependency on the API's `CORS *`; enables `SameSite=Strict` cookies later. | Requires a reverse proxy in production. |
+| Strict CSP without `unsafe-inline` (preview/prod) | Defense in depth against XSS. | No CSP in `npm run dev` (HMR needs inline). |
+| WebSocket authenticated via `handshake.auth`, websocket transport only | Token never goes to query strings/logs. | No long-polling fallback. |
+| Validated post-login redirect (`safeRedirect`) | Prevents open redirect via `state.from`. | — |
+| Upload: type/size + PDF magic number checked on the client | Immediate feedback. | Does not replace API validation. |
+| Profile PATCH sends only changed fields | The API **replaces** `experiences/educations` when sent; an empty form would wipe data. | — |
+| Route guards | UX only. Authorization belongs to the API. | — |
 
-| CSP estrita sem `unsafe-inline` (preview/prod) | Barreira de defesa em profundidade contra XSS. | Em `npm run dev` não há CSP (HMR precisa de inline). |
-| WS autenticado via `handshake.auth`, só transporte websocket | Token não vai para query string/logs. | Sem fallback para long-polling. |
-| Redirect pós-login validado (`safeRedirect`) | Evita open redirect via `state.from`. | — |
-| Upload: tipo/tamanho + magic number do PDF no cliente | Feedback imediato. | Não substitui a validação do back. |
-| PATCH de perfis envia só campos alterados | O back **substitui** `experiences/educations` quando enviados; sem `GET /me` um form vazio apagaria dados. | — |
-| Guards de rota | Só UX. Autorização é do back. | — |
+## Getting started
+
+**Prerequisites:** Node.js 20+, the API running on port 3009
+
+```bash
+cp .env.example .env        # adjust BACKEND_URL if the API is not on :3009
+npm ci
+npm run dev                 # http://localhost:5173 (proxies /api, /uploads and /socket.io → API)
+```
+
+### Environment variables
+
+`.env.example` — nothing secret belongs in `VITE_*` variables.
+
+| Variable | Description |
+|---|---|
+| `VITE_API_URL` | API base path (default `/api`) |
+| `VITE_WS_URL` | WebSocket URL (empty = same origin) |
+| `BACKEND_URL` | Target of the Vite dev proxy only |
+
+### Scripts
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Dev server with proxy |
+| `npm run build` | Type-check + production build |
+| `npm run preview` | Serve the build with the production CSP headers |
+| `npm test` | Vitest (security utilities) |
+| `npm run audit` | `npm audit` on production dependencies |
 
 ## Design
 
-Tokens em `src/index.css` (paleta oceano/areia, WCAG AA em light e dark via `prefers-color-scheme`), fonte do sistema (zero request externo), foco visível, skip-link, `aria-live` em listas/chat, layout responsivo a partir de 360px.
+Tokens in `src/index.css` (ocean/sand palette, WCAG AA in light and dark via `prefers-color-scheme`), system font (no external requests), visible focus, skip link, `aria-live` on lists and chat, responsive from 360px.
+
+## Team
+
+- [Vinicius do Valle](https://github.com/vallevinicius)
+- [Vinícius Diller](https://github.com/viniciusdiller)
