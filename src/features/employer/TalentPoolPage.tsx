@@ -5,9 +5,11 @@ import type { SavedCandidate } from '@/api/types';
 import { Button, ConfirmDialog, EmptyState, PageHeader, Pagination, Skeleton } from '@/components/ui';
 import { ErrorState, SafeText, useToast } from '@/components/feedback';
 import { formatDate } from '@/lib/format';
-import { CandidateSummary } from './CandidateCard';
+import { CandidateSummary, MessageCandidateButton } from './CandidateCard';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 export default function TalentPoolPage() {
+  useDocumentTitle("Banco de talentos");
   const qc = useQueryClient();
   const toast = useToast();
   const [page, setPage] = useState(1);
@@ -52,7 +54,12 @@ export default function TalentPoolPage() {
                       {s.notes && <> · <SafeText>{s.notes}</SafeText></>}
                     </p>
                   }
-                  actions={<Button size="sm" variant="danger-ghost" onClick={() => setToRemove(s)}>Remover</Button>}
+                  actions={
+                    <>
+                      <MessageCandidateButton candidateId={s.candidate_id} />
+                      <Button size="sm" variant="danger-ghost" onClick={() => setToRemove(s)}>Remover</Button>
+                    </>
+                  }
                 />
               </li>
             ))}
