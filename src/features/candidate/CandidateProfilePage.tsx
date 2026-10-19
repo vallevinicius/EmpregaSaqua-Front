@@ -15,7 +15,7 @@ import { APPLICATION_STATUS_LABEL, ESCOLARIDADE_LABEL, IDIOMA_LABEL, JOB_AREA_LA
 import { IMAGE_TYPES, decodeEntities, onlyDigits, safeAssetUrl } from '@/lib/safe';
 import { errorMessage } from '@/lib/http';
 import { ResumePreview } from './ResumePreview';
-import { profileCompleteness } from '@/lib/profile';
+import { profileCompleteness, profileNextSteps, type ProfileStepKey } from '@/lib/profile';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 const month = z.string().regex(/^\d{4}-\d{2}$/, 'Use o formato AAAA-MM.');
@@ -182,7 +182,7 @@ export default function CandidateProfilePage() {
 
       <div className="grid gap-8 lg:grid-cols-[1fr_24rem]">
         <form noValidate className="flex flex-col gap-6" onSubmit={form.handleSubmit((v) => save.mutate(v))}>
-          <Card>
+          <Card id="perfil-sobre" className="scroll-mt-24">
             <CardSectionTitle icon={<IdentificationCardIcon size={18} />} title="Sobre você" />
             <AvatarUpload avatarUrl={profile.data?.avatar_url} />
             <div className="grid gap-4 sm:grid-cols-2">
@@ -234,7 +234,7 @@ export default function CandidateProfilePage() {
             </div>
           </Card>
 
-          <Card>
+          <Card id="perfil-habilidades" className="scroll-mt-24">
             <CardSectionTitle icon={<SparkleIcon size={18} />} title="Habilidades" />
             <Controller
               control={form.control}
@@ -287,7 +287,7 @@ export default function CandidateProfilePage() {
             </div>
           </Card>
 
-          <Card>
+          <Card id="perfil-experiencia" className="scroll-mt-24">
             <div className="mb-5 flex items-center justify-between">
               <CardSectionTitle icon={<BriefcaseIcon size={18} />} title="Experiência profissional" className="mb-0" />
               <Button size="sm" variant="secondary" disabled={exps.fields.length >= 20} onClick={() => exps.append({ company: '', role: '', start_date: '', end_date: '', description: '' })}>
@@ -313,7 +313,7 @@ export default function CandidateProfilePage() {
             </div>
           </Card>
 
-          <Card>
+          <Card id="perfil-formacao" className="scroll-mt-24">
             <div className="mb-5 flex items-center justify-between">
               <CardSectionTitle icon={<GraduationCapIcon size={18} />} title="Formação" className="mb-0" />
               <Button size="sm" variant="secondary" disabled={edus.fields.length >= 20} onClick={() => edus.append({ institution: '', degree: '', field_of_study: '', start_date: '', end_date: '' })}>
@@ -369,18 +369,55 @@ export default function CandidateProfilePage() {
   );
 }
 
-/** Barra de progresso do currículo: mostra o que falta e cresce enquanto a pessoa digita. */
+const STEP_SECTION: Record<ProfileStepKey, string> = {
+  name: 'perfil-sobre',
+  phone: 'perfil-sobre',
+  address: 'perfil-sobre',
+  bio: 'perfil-sobre',
+  skills: 'perfil-habilidades',
+  experience: 'perfil-experiencia',
+  education: 'perfil-formacao',
+};
+
+/** Leva a pessoa até a seção e foca o primeiro campo/botão dela. */
+function goToSection(key: ProfileStepKey) {
+  const section = document.getElementById(STEP_SECTION[key]);
+  if (!section) return;
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  section.querySelector<HTMLElement>('input, textarea, select, button')?.focus({ preventScroll: true });
+}
+
+/** Barra de progresso do currículo: mostra o que falta (cada item leva ao campo) e cresce enquanto a pessoa digita. */
 function ProgressCard({ values }: { values: Parameters<typeof profileCompleteness>[0] }) {
-  const { percent, missing } = profileCompleteness(values);
+  const { percent } = profileCompleteness(values);
+  const steps = profileNextSteps(values);
   return (
     <Card className="mb-8">
       <div className="flex items-center justify-between gap-4">
         <p className="font-bold">Seu currículo está {percent}% completo</p>
-        <span className="text-sm text-muted">{percent === 100 ? 'Tudo pronto!' : `Falta: ${missing.slice(0, 3).join(', ')}${missing.length > 3 ? '…' : ''}`}</span>
+        {percent === 100 && <span className="text-sm text-muted">Tudo pronto!</span>}
       </div>
       <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100} aria-label="Progresso do currículo">
         <div className="h-full rounded-full bg-green transition-[width] duration-500" style={{ width: `${percent}%` }} />
       </div>
+      {steps.length > 0 && (
+        <div className="mt-4">
+          <p className="mb-2 text-sm text-muted">Próximos passos para chamar mais atenção:</p>
+          <ul className="flex flex-wrap gap-2">
+            {steps.map((s) => (
+              <li key={s.key}>
+                <button
+                  type="button"
+                  onClick={() => goToSection(s.key)}
+                  className="rounded-full border border-border bg-surface-2 px-3 py-1 text-sm font-semibold text-primary hover:bg-primary-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                >
+                  + {s.label.charAt(0).toUpperCase() + s.label.slice(1)}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </Card>
   );
 }

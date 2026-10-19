@@ -164,8 +164,8 @@ export function Checkbox({ label, ...rest }: InputHTMLAttributes<HTMLInputElemen
 
 // ---------- Display ----------
 
-export function Card({ className, children, as: As = 'section' }: { className?: string; children: ReactNode; as?: 'section' | 'article' | 'div' }) {
-  return <As className={cx('rounded-2xl border border-border bg-surface p-6 shadow-card', className)}>{children}</As>;
+export function Card({ className, children, id, as: As = 'section' }: { className?: string; children: ReactNode; id?: string; as?: 'section' | 'article' | 'div' }) {
+  return <As id={id} className={cx('rounded-2xl border border-border bg-surface p-6 shadow-card', className)}>{children}</As>;
 }
 
 type Tone = 'neutral' | 'primary' | 'green' | 'success' | 'warning' | 'danger';

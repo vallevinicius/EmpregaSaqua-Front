@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { profileCompleteness } from './profile';
+import { profileCompleteness, profileNextSteps } from './profile';
 import { formatCnpj, formatMonthYear } from './format';
 
 describe('profileCompleteness', () => {
@@ -41,4 +41,25 @@ describe('formatMonthYear', () => {
   it('sem data = Atual', () => expect(formatMonthYear('')).toBe('Atual'));
   it('formata AAAA-MM', () => expect(formatMonthYear('2022-03')).toMatch(/mar.*2022/i));
   it('valor inválido volta cru', () => expect(formatMonthYear('abc')).toBe('abc'));
+});
+
+describe('profileNextSteps', () => {
+  it('perfil vazio lista os 7 passos na ordem de preenchimento', () => {
+    expect(profileNextSteps(null).map((s) => s.key)).toEqual(['name', 'phone', 'address', 'bio', 'skills', 'experience', 'education']);
+  });
+  it('remove o que já foi preenchido e mantém os rótulos', () => {
+    const steps = profileNextSteps({ full_name: 'Joana', skills: ['Excel'], educations: [1] });
+    expect(steps.map((s) => s.key)).toEqual(['phone', 'address', 'bio', 'experience']);
+    expect(steps.find((s) => s.key === 'experience')?.label).toBe('experiência profissional');
+  });
+  it('espaços em branco não contam como preenchido', () => {
+    expect(profileNextSteps({ full_name: '  ', bio: '\n' }).map((s) => s.key)).toContain('name');
+  });
+  it('perfil completo não tem próximos passos', () => {
+    expect(profileNextSteps({ full_name: 'a', telefone: '1', address: 'b', bio: 'c', skills: [1], experiences: [1], educations: [1] })).toEqual([]);
+  });
+  it('concorda com profileCompleteness sobre o que falta', () => {
+    const p = { full_name: 'a', bio: 'c' };
+    expect(profileNextSteps(p).map((s) => s.label)).toEqual(profileCompleteness(p).missing);
+  });
 });
