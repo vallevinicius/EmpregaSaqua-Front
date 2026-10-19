@@ -31,6 +31,7 @@ const AdminCompaniesPage = lazy(() => import('@/features/admin/AdminCompaniesPag
 const ChatPage = lazy(() => import('@/features/chat/ChatPage'));
 const NotFoundPage = lazy(() => import('@/features/public/NotFoundPage'));
 const ConfirmAccountDeletionPage = lazy(() => import('@/features/public/ConfirmAccountDeletionPage'));
+const VerifyEmailPage = lazy(() => import('@/features/auth/VerifyEmailPage'));
 
 export function App() {
   return (
@@ -46,6 +47,9 @@ export function App() {
           <Route path="esqueci-minha-senha" element={<RedirectIfAuthed><ForgotPasswordPage /></RedirectIfAuthed>} />
           <Route path="redefinir-senha" element={<RedirectIfAuthed><ResetPasswordPage /></RedirectIfAuthed>} />
           <Route path="excluir-conta/confirmar" element={<ConfirmAccountDeletionPage />} />
+          {/* Sem RedirectIfAuthed de propósito: cadastro já loga automaticamente (ver AuthService#register),
+              então quem clica no link de verificação pode já estar com sessão ativa no mesmo navegador. */}
+          <Route path="verificar-email" element={<VerifyEmailPage />} />
 
           <Route path="candidato">
             <Route path="candidaturas" element={<RequireAuth roles={['JOB_SEEKER']}><MyApplicationsPage /></RequireAuth>} />

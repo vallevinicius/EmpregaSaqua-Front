@@ -3,11 +3,12 @@ import { useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { authApi } from '@/api/endpoints';
 import { useAuthActions } from '@/auth/useAuth';
 import { homeFor, safeRedirect } from '@/auth/guards';
-import { Button, Field, Input } from '@/components/ui';
-import { ApiErrorAlert } from '@/components/feedback';
-import { ApiError } from '@/lib/http';
+import { Alert, Button, Field, Input } from '@/components/ui';
+import { ApiErrorAlert, useToast } from '@/components/feedback';
+import { ApiError, errorMessage } from '@/lib/http';
 import { AuthShell } from './AuthShell';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
@@ -22,6 +23,7 @@ export default function LoginPage() {
   const { login } = useAuthActions();
   const navigate = useNavigate();
   const location = useLocation();
+  const toast = useToast();
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { identifier: '', password: '' } });
 
   const mutation = useMutation({
@@ -33,7 +35,14 @@ export default function LoginPage() {
     onError: () => form.resetField('password'),
   });
 
+  const resend = useMutation({
+    mutationFn: () => authApi.resendVerification(form.getValues('identifier')),
+    onSuccess: (r) => toast(r.message),
+    onError: (e) => toast(errorMessage(e), 'danger'),
+  });
+
   const err = mutation.error;
+  const isUnverified = err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED';
   // Mensagem genérica em 401: não revelar se o identificador existe (enumeração de usuários).
   const shownError = err instanceof ApiError && err.status === 401 ? new ApiError(401, 'Credenciais incorretas.', { path: err.path }) : err;
 
@@ -65,7 +74,16 @@ export default function LoginPage() {
         <div className="-mt-2 text-right text-sm">
           <Link to="/esqueci-minha-senha" className="font-semibold text-primary hover:underline">Esqueci minha senha</Link>
         </div>
-        <ApiErrorAlert error={shownError} />
+        {isUnverified ? (
+          <Alert tone="warning" title="Confirme seu e-mail">
+            Verifique sua caixa de entrada para confirmar o cadastro antes de entrar.
+            <Button type="button" size="sm" variant="secondary" className="mt-3" loading={resend.isPending} onClick={() => resend.mutate()}>
+              Reenviar e-mail de confirmação
+            </Button>
+          </Alert>
+        ) : (
+          <ApiErrorAlert error={shownError} />
+        )}
         <Button type="submit" size="lg" loading={mutation.isPending}>Entrar</Button>
       </form>
     </AuthShell>
