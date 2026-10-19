@@ -35,6 +35,7 @@ const schema = z.object({
   genero: z.string(),
   cargo_interesse: z.string().trim().max(150),
   is_pcd: z.boolean(),
+  open_to_work: z.boolean(),
   escolaridade: z.union([z.enum(ESCOLARIDADES), z.literal('')]),
   skills: z.array(z.string().trim().min(1).max(50)).max(30),
   languages: z
@@ -80,6 +81,7 @@ const EMPTY: Values = {
   genero: '',
   cargo_interesse: '',
   is_pcd: false,
+  open_to_work: false,
   escolaridade: '',
   skills: [],
   languages: [],
@@ -97,6 +99,7 @@ function toValues(p: CandidateProfile): Values {
     genero: p.genero ?? '',
     cargo_interesse: decodeEntities(p.cargo_interesse ?? ''),
     is_pcd: p.is_pcd,
+    open_to_work: p.open_to_work ?? false,
     escolaridade: p.escolaridade ?? '',
     skills: (p.skills ?? []).map(decodeEntities),
     languages: (p.languages ?? []).map((l) => ({ idioma: l.idioma, idioma_outro: decodeEntities(l.idioma_outro ?? ''), nivel: l.nivel })),
@@ -149,6 +152,7 @@ export default function CandidateProfilePage() {
       if (dirtyFields.genero) body.genero = v.genero;
       if (dirtyFields.cargo_interesse) body.cargo_interesse = v.cargo_interesse;
       if (dirtyFields.is_pcd) body.is_pcd = v.is_pcd;
+      if (dirtyFields.open_to_work) body.open_to_work = v.open_to_work;
       if (dirtyFields.escolaridade) body.escolaridade = (v.escolaridade || undefined) as Escolaridade | undefined;
       if (dirtyFields.skills) body.skills = v.skills;
       if (dirtyFields.languages) {
@@ -230,6 +234,10 @@ export default function CandidateProfilePage() {
               </Field>
               <div className="sm:col-span-2">
                 <Checkbox label="Sou pessoa com deficiência (PCD)" {...form.register('is_pcd')} />
+              </div>
+              <div className="sm:col-span-2 rounded-xl bg-surface-2 p-4">
+                <Checkbox label="Estou aberto(a) a oportunidades" {...form.register('open_to_work')} />
+                <p className="mt-1 pl-6 text-xs text-muted">As empresas veem um selo no seu currículo na busca de talentos. Desmarque se não quiser ser procurado(a).</p>
               </div>
             </div>
           </Card>

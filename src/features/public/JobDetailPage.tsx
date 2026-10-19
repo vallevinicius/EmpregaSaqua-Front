@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { applicationsApi, candidatesApi, jobsApi } from '@/api/endpoints';
-import type { Job } from '@/api/types';
+import type { Application, Job } from '@/api/types';
 import { useSession } from '@/auth/useAuth';
 import { Alert, Badge, Button, Card, Field, Input, Skeleton, Textarea, buttonClass, cx } from '@/components/ui';
 import {
@@ -26,13 +26,14 @@ import {
   WalletIcon,
 } from '@/components/icons';
 import { ApiErrorAlert, ErrorState, SafeParagraphs, SafeText, useToast } from '@/components/feedback';
-import { CONTRACT_LABEL, ESCOLARIDADE_LABEL, IDIOMA_LABEL, JOB_STATUS_LABEL, NIVEL_IDIOMA_LABEL, WORK_MODEL_LABEL, formatDate } from '@/lib/format';
+import { APPLICATION_STATUS_LABEL, CONTRACT_LABEL, ESCOLARIDADE_LABEL, IDIOMA_LABEL, JOB_STATUS_LABEL, NIVEL_IDIOMA_LABEL, WORK_MODEL_LABEL, formatDate, relativeDate } from '@/lib/format';
 import { decodeEntities, mailtoLink, safeHttpUrl, whatsappLink } from '@/lib/safe';
 import { profileCompleteness } from '@/lib/profile';
 import { toggleSavedJob, useSavedJobs } from '@/lib/savedJobs';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { ApiError } from '@/lib/http';
-import { CompanyLogo } from './JobCard';
+import { similarJobs } from '@/lib/recommend';
+import { CompanyLogo, JobCard } from './JobCard';
 
 export default function JobDetailPage() {
   const { id = '' } = useParams();
@@ -127,6 +128,7 @@ export default function JobDetailPage() {
               />
             )}
           </div>
+          {job.status === 'ACTIVE' && !expired && <SimilarJobs job={job} />}
         </article>
 
         <aside className="flex flex-col gap-4 lg:sticky lg:top-24 lg:self-start">
@@ -280,6 +282,9 @@ function ListSection({ title, items }: { title: string; items: string[] }) {
 
 // ---------- Candidatura ----------
 
+/** Currículo preenchido o bastante para a empresa avaliar sem carta (mesmo corte do aviso de currículo incompleto). */
+const QUICK_APPLY_MIN_PERCENT = 70;
+
 function buildSchema(questionIds: string[]) {
   return z.object({
     cover_letter: z.string().trim().max(3000, 'Máximo de 3000 caracteres.').optional(),
@@ -320,6 +325,23 @@ function ApplyForm({ job }: { job: Job }) {
     },
   });
 
+  const me = useQuery({ queryKey: ['candidate', 'me'], queryFn: ({ signal }) => candidatesApi.me(signal), retry: false });
+  const mine = useQuery({ queryKey: ['applications', 'mine'], queryFn: ({ signal }) => applicationsApi.mine(signal), staleTime: 60_000, retry: false });
+
+  // Candidatura rápida: sem perguntas da vaga e com o currículo salvo bem preenchido, envia tudo com um clique.
+  const quick = useMutation({
+    mutationFn: () => applicationsApi.apply(job.id, {}),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['applications', 'mine'] });
+      toast('Candidatura enviada!');
+      navigate('/candidato/candidaturas');
+    },
+  });
+  const canQuickApply = questions.length === 0 && !!me.data && profileCompleteness(me.data).percent >= QUICK_APPLY_MIN_PERCENT;
+
+  const existing = mine.data?.find((a) => a.job_id === job.id);
+  if (existing) return <AlreadyApplied app={existing} />;
+
   const errors = form.formState.errors;
   const answerErrors = (errors.answers ?? {}) as Record<string, { message?: string } | undefined>;
 
@@ -327,6 +349,16 @@ function ApplyForm({ job }: { job: Job }) {
     <Card>
       <h2 className="text-lg font-bold">Candidatar-se</h2>
       <ProfileHint />
+      {canQuickApply && (
+        <div className="mt-4 rounded-xl bg-primary-soft p-4">
+          <p className="text-sm text-fg/90">Envie agora com o seu currículo salvo, sem carta de apresentação.</p>
+          <Button type="button" size="lg" className="mt-3 w-full" loading={quick.isPending} disabled={mutation.isPending} onClick={() => quick.mutate()}>
+            <SendIcon size={16} /> Candidatura rápida
+          </Button>
+          <ApiErrorAlert error={quick.error} />
+          <p className="mt-3 text-center text-xs text-muted">ou personalize abaixo</p>
+        </div>
+      )}
       <form className="mt-4 flex flex-col gap-4" noValidate onSubmit={form.handleSubmit((v) => mutation.mutate(v))}>
         {questions.map((q) => (
           <fieldset key={q.id} className="flex flex-col gap-2">
@@ -349,7 +381,7 @@ function ApplyForm({ job }: { job: Job }) {
           {({ id, describedBy, invalid }) => <Input id={id} type="url" inputMode="url" placeholder="https://" aria-describedby={describedBy} invalid={invalid} {...form.register('resume_url')} />}
         </Field>
         <ApiErrorAlert error={mutation.error} />
-        <Button type="submit" size="lg" loading={mutation.isPending}><SendIcon size={16} /> Enviar candidatura</Button>
+        <Button type="submit" size="lg" variant={canQuickApply ? 'secondary' : 'primary'} loading={mutation.isPending} disabled={quick.isPending}><SendIcon size={16} /> Enviar candidatura</Button>
       </form>
     </Card>
   );
@@ -368,5 +400,42 @@ function ProfileHint() {
       A empresa vê o seu currículo junto com a candidatura. Falta: {missing.slice(0, 3).join(', ')}.{' '}
       <Link className="font-semibold underline" to="/candidato/perfil">Completar agora</Link>
     </Alert>
+  );
+}
+
+/** A pessoa já se candidatou a esta vaga: mostra o andamento em vez do formulário. */
+function AlreadyApplied({ app }: { app: Application }) {
+  return (
+    <Card>
+      <h2 className="text-lg font-bold">Você já se candidatou</h2>
+      <p className="mt-2 text-sm text-muted">
+        Enviada {relativeDate(app.created_at) === 'hoje' ? 'hoje' : relativeDate(app.created_at)}. Status: <strong className="text-fg">{APPLICATION_STATUS_LABEL[app.status]}</strong>.
+      </p>
+      <Link to="/candidato/candidaturas" className={buttonClass('secondary', 'sm', 'mt-4')}>Acompanhar candidatura</Link>
+    </Card>
+  );
+}
+
+/** Outras vagas parecidas (mesma área, título e contrato semelhantes), calculadas sobre as vagas ativas mais recentes. */
+function SimilarJobs({ job }: { job: Job }) {
+  const pool = useQuery({
+    queryKey: ['jobs', 'similar', job.id],
+    queryFn: ({ signal }) => jobsApi.list({ page: 1, limit: 30, area: job.area || undefined }, signal),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const similar = useMemo(() => similarJobs(job, pool.data?.data ?? [], 4), [job, pool.data]);
+  if (!similar.length) return null;
+  return (
+    <section aria-label="Vagas parecidas" className="pt-4">
+      <h2 className="mb-4 text-xl font-extrabold tracking-tight">Vagas parecidas</h2>
+      <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
+        {similar.map((j) => (
+          <li key={j.id}>
+            <JobCard job={j} />
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

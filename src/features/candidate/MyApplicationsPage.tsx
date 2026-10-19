@@ -6,7 +6,8 @@ import type { Application, ApplicationStatus, Job } from '@/api/types';
 import { useSession } from '@/auth/useAuth';
 import { Badge, Button, ConfirmDialog, EmptyState, PageHeader, Skeleton, cx } from '@/components/ui';
 import { ErrorState, SafeText, useToast } from '@/components/feedback';
-import { APPLICATION_STATUS_LABEL, formatDate } from '@/lib/format';
+import { APPLICATION_STATUS_LABEL, formatDate, relativeDate } from '@/lib/format';
+import { applicationHint, wasUpdated } from '@/lib/applications';
 import { chatLink } from '@/features/chat/chatLink';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
@@ -82,6 +83,7 @@ export default function MyApplicationsPage() {
                   <p className="text-sm text-muted">
                     {job?.employer?.company_profile?.nome_fantasia && <><SafeText>{job.employer.company_profile.nome_fantasia}</SafeText> · </>}
                     Enviada em {formatDate(app.created_at)}
+                    {wasUpdated(app.created_at, app.updated_at) && <> · Atualizada {relativeDate(app.updated_at)}</>}
                   </p>
                 </div>
                 <Badge tone={STATUS_TONE[app.status]}>{APPLICATION_STATUS_LABEL[app.status]}</Badge>
@@ -121,27 +123,27 @@ const STEPS: { status: ApplicationStatus; label: string }[] = [
   { status: 'HIRED', label: 'Contratado' },
 ];
 
-/** Linha do tempo da candidatura. Não selecionado interrompe a linha e explica o motivo quando é a triagem. */
+/** Linha do tempo da candidatura, com uma frase explicando a etapa atual. Não selecionado interrompe a linha e explica o motivo. */
 function StatusSteps({ status, knockedOut }: { status: ApplicationStatus; knockedOut: boolean }) {
+  const hint = applicationHint(status, knockedOut);
   if (status === 'REJECTED') {
-    return (
-      <p className="text-sm text-danger sm:basis-full">
-        {knockedOut ? 'Não selecionado na triagem: suas respostas não atenderam aos requisitos da vaga.' : 'Não selecionado para esta vaga.'}
-      </p>
-    );
+    return <p className="text-sm text-danger sm:basis-full">{hint}</p>;
   }
   const current = STEPS.findIndex((s) => s.status === status);
   return (
-    <ol className="flex items-center gap-2 text-xs sm:basis-full" aria-label="Etapas da candidatura">
-      {STEPS.map((s, i) => (
-        <li key={s.status} className="flex flex-1 items-center gap-2" aria-current={i === current ? 'step' : undefined}>
-          <span className={cx('flex size-6 shrink-0 items-center justify-center rounded-full font-bold', i <= current ? 'bg-primary text-primary-fg' : 'bg-surface-2 text-muted')}>
-            {i < current ? '✓' : i + 1}
-          </span>
-          <span className={cx('hidden sm:inline', i === current ? 'font-bold text-fg' : 'text-muted')}>{s.label}</span>
-          {i < STEPS.length - 1 && <span aria-hidden className={cx('h-px flex-1', i < current ? 'bg-primary' : 'bg-border')} />}
-        </li>
-      ))}
-    </ol>
+    <div className="flex flex-col gap-2 sm:basis-full">
+      <ol className="flex items-center gap-2 text-xs" aria-label="Etapas da candidatura">
+        {STEPS.map((s, i) => (
+          <li key={s.status} className="flex flex-1 items-center gap-2" aria-current={i === current ? 'step' : undefined}>
+            <span className={cx('flex size-6 shrink-0 items-center justify-center rounded-full font-bold', i <= current ? 'bg-primary text-primary-fg' : 'bg-surface-2 text-muted')}>
+              {i < current ? '✓' : i + 1}
+            </span>
+            <span className={cx('hidden sm:inline', i === current ? 'font-bold text-fg' : 'text-muted')}>{s.label}</span>
+            {i < STEPS.length - 1 && <span aria-hidden className={cx('h-px flex-1', i < current ? 'bg-primary' : 'bg-border')} />}
+          </li>
+        ))}
+      </ol>
+      <p className="text-sm text-muted">{hint}</p>
+    </div>
   );
 }

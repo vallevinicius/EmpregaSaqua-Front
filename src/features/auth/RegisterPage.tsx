@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthActions } from '@/auth/useAuth';
 import { homeFor } from '@/auth/guards';
-import { Button, Field, Input, Textarea, cx } from '@/components/ui';
+import { Button, Field, Input, PasswordInput, Textarea, cx } from '@/components/ui';
 import { ApiErrorAlert, useToast } from '@/components/feedback';
 import { CepLookup, cepToAddress } from '@/components/inputs';
 import { BuildingIcon, UserIcon } from '@/components/icons';
@@ -170,10 +170,10 @@ export default function RegisterPage() {
           {({ id, describedBy, invalid }) => <Input id={id} autoComplete="username" placeholder="joana.silva" aria-describedby={describedBy} invalid={invalid} {...form.register('username')} />}
         </Field>
         <Field label="Senha" error={errors.password?.message} hint="Mínimo 8 caracteres, com letras e números." required>
-          {({ id, describedBy, invalid }) => <Input id={id} type="password" autoComplete="new-password" aria-describedby={describedBy} invalid={invalid} {...form.register('password')} />}
+          {({ id, describedBy, invalid }) => <PasswordInput id={id} autoComplete="new-password" aria-describedby={describedBy} invalid={invalid} {...form.register('password')} />}
         </Field>
         <Field label="Confirmar senha" error={errors.confirm?.message} required>
-          {({ id, describedBy, invalid }) => <Input id={id} type="password" autoComplete="new-password" aria-describedby={describedBy} invalid={invalid} {...form.register('confirm')} />}
+          {({ id, describedBy, invalid }) => <PasswordInput id={id} autoComplete="new-password" aria-describedby={describedBy} invalid={invalid} {...form.register('confirm')} />}
         </Field>
 
         <div className="border-t border-border pt-5">

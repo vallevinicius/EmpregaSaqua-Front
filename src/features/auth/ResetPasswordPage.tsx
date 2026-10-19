@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { authApi } from '@/api/endpoints';
-import { Alert, Button, Field, Input, buttonClass } from '@/components/ui';
+import { Alert, Button, Field, PasswordInput, buttonClass } from '@/components/ui';
 import { ApiErrorAlert } from '@/components/feedback';
 import { AuthShell } from './AuthShell';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
@@ -65,12 +65,12 @@ export default function ResetPasswordPage() {
         <form noValidate className="flex flex-col gap-5" onSubmit={form.handleSubmit((v) => mutation.mutate(v))}>
           <Field label="Nova senha" error={form.formState.errors.password?.message} hint="Mínimo 8 caracteres, com letras e números." required>
             {({ id, describedBy, invalid }) => (
-              <Input id={id} type="password" autoComplete="new-password" autoFocus aria-describedby={describedBy} invalid={invalid} {...form.register('password')} />
+              <PasswordInput id={id} autoComplete="new-password" autoFocus aria-describedby={describedBy} invalid={invalid} {...form.register('password')} />
             )}
           </Field>
           <Field label="Confirmar nova senha" error={form.formState.errors.confirm?.message} required>
             {({ id, describedBy, invalid }) => (
-              <Input id={id} type="password" autoComplete="new-password" aria-describedby={describedBy} invalid={invalid} {...form.register('confirm')} />
+              <PasswordInput id={id} autoComplete="new-password" aria-describedby={describedBy} invalid={invalid} {...form.register('confirm')} />
             )}
           </Field>
           <ApiErrorAlert error={mutation.error} />
