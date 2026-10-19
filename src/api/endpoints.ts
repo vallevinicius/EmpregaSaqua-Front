@@ -106,6 +106,10 @@ export const authApi = {
     request<{ message: string }>('/auth/forgot-password', { method: 'POST', body: { identifier }, auth: false }),
   resetPassword: (token: string, password: string) =>
     request<{ message: string }>('/auth/reset-password', { method: 'POST', body: { token, password }, auth: false }),
+  verifyEmail: (token: string) =>
+    request<{ message: string }>('/auth/verify-email', { method: 'POST', body: { token }, auth: false }),
+  resendVerification: (identifier: string) =>
+    request<{ message: string }>('/auth/resend-verification', { method: 'POST', body: { identifier }, auth: false }),
 };
 
 // ---------- Jobs ----------

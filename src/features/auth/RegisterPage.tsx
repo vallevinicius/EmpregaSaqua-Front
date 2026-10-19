@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useAuthActions } from '@/auth/useAuth';
 import { homeFor } from '@/auth/guards';
 import { Button, Field, Input, Textarea, cx } from '@/components/ui';
-import { ApiErrorAlert } from '@/components/feedback';
+import { ApiErrorAlert, useToast } from '@/components/feedback';
 import { CepLookup, cepToAddress } from '@/components/inputs';
 import { BuildingIcon, UserIcon } from '@/components/icons';
 import { formatCnpj, formatCpf } from '@/lib/format';
@@ -86,6 +86,7 @@ export default function RegisterPage() {
   useDocumentTitle("Cadastre-se");
   const { register: registerUser } = useAuthActions();
   const navigate = useNavigate();
+  const toast = useToast();
   // `?tipo=empresa` (links "Para empresas") pré-seleciona a conta de empresa.
   const [sp] = useSearchParams();
   const initialRole = sp.get('tipo') === 'empresa' ? 'EMPLOYER' : 'JOB_SEEKER';
@@ -112,7 +113,10 @@ export default function RegisterPage() {
               data_nascimento: v.data_nascimento || undefined,
             }),
       }),
-    onSuccess: (s) => navigate(s.user.role === 'EMPLOYER' ? '/empresa/perfil' : homeFor(s.user.role), { replace: true }),
+    onSuccess: (s) => {
+      toast('Conta criada! Enviamos um e-mail de confirmação — você pode explorar o site, mas vai precisar confirmar pra entrar de novo depois.');
+      navigate(s.user.role === 'EMPLOYER' ? '/empresa/perfil' : homeFor(s.user.role), { replace: true });
+    },
   });
 
   return (
