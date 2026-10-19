@@ -1,19 +1,66 @@
 /**
  * Tipos espelhando src/prisma/contract.prisma do back (snake_case, como a API devolve).
- * Campos sensíveis (password_hash, expected_answer, internal_notes) são deliberadamente
- * OMITIDOS: o front não deve depender deles nem propagá-los em estado.
+ * Campos sensíveis (password_hash, eliminates do QuestionOption, internal_notes) são
+ * deliberadamente OMITIDOS: o front não deve depender deles nem propagá-los em estado.
  */
 
 export type Role = 'JOB_SEEKER' | 'EMPLOYER' | 'ADMIN';
 export type JobStatus = 'PENDING' | 'ACTIVE' | 'FILLED' | 'REJECTED';
 export type ApplicationStatus = 'APPLIED' | 'REVIEWING' | 'INTERVIEW' | 'HIRED' | 'REJECTED';
 export type WorkModel = 'ON_SITE' | 'HYBRID' | 'REMOTE';
-export type ContractType = 'CLT' | 'PJ' | 'INTERNSHIP' | 'FREELANCE' | 'APPRENTICE';
+export type ContractType =
+  | 'TEMPO_DETERMINADO'
+  | 'INTERMITENTE'
+  | 'TERCEIRIZADO'
+  | 'REMOTO'
+  | 'PARCIAL'
+  | 'JOVEM_APRENDIZ'
+  | 'ESTAGIO'
+  | 'DOMESTICO';
 export type VerificationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type JobArea =
+  | 'ADMINISTRACAO'
+  | 'TI'
+  | 'SAUDE'
+  | 'EDUCACAO'
+  | 'COMERCIO_VENDAS'
+  | 'ALIMENTACAO'
+  | 'CONSTRUCAO'
+  | 'LIMPEZA_SERVICOS_GERAIS'
+  | 'LOGISTICA_TRANSPORTE'
+  | 'TURISMO_HOTELARIA'
+  | 'OUTROS';
+
+export type Escolaridade =
+  | 'ANALFABETO'
+  | 'SEMIANALFABETO'
+  | 'FUNDAMENTAL_COMPLETO'
+  | 'FUNDAMENTAL_INCOMPLETO'
+  | 'MEDIO_COMPLETO'
+  | 'MEDIO_INCOMPLETO'
+  | 'SUPERIOR_COMPLETO'
+  | 'SUPERIOR_INCOMPLETO'
+  | 'POS_GRADUACAO_COMPLETA'
+  | 'POS_GRADUACAO_INCOMPLETA'
+  | 'MESTRADO_COMPLETO'
+  | 'MESTRADO_INCOMPLETO'
+  | 'DOUTORADO_COMPLETO'
+  | 'DOUTORADO_INCOMPLETO';
+
+export type Idioma = 'INGLES' | 'ESPANHOL' | 'FRANCES' | 'ALEMAO' | 'CHINES' | 'JAPONES' | 'LIBRAS' | 'OUTRO';
+export type NivelIdioma = 'BASICO' | 'INTERMEDIARIO' | 'AVANCADO';
+
+export interface CandidateLanguage {
+  id?: string;
+  idioma: Idioma;
+  idioma_outro?: string | null;
+  nivel: NivelIdioma;
+}
 
 export interface SessionUser {
   id: string;
   email: string;
+  username?: string;
   role: Role;
 }
 
@@ -48,9 +95,15 @@ export interface CompanyProfile {
   updated_at: string;
 }
 
+export interface QuestionOption {
+  id: string;
+  option_text: string;
+}
+
 export interface JobQuestion {
   id: string;
   question_text: string;
+  options: QuestionOption[];
 }
 
 export interface Job {
@@ -66,9 +119,11 @@ export interface Job {
   benefits: string[];
   work_model: WorkModel;
   contract_type: ContractType;
+  area?: JobArea | null;
   is_salary_visible: boolean;
   is_pcd: boolean;
   expires_at: string | null;
+  escolaridade_exigida?: Escolaridade | null;
   contact_whatsapp: string | null;
   contact_email: string | null;
   status: JobStatus;
@@ -80,6 +135,7 @@ export interface Job {
     company_profile?: Pick<CompanyProfile, 'nome_fantasia' | 'logo_url'> & Partial<CompanyProfile> | null;
   } | null;
   questions?: JobQuestion[];
+  language_requirements?: CandidateLanguage[];
 }
 
 export interface Experience {
@@ -108,7 +164,14 @@ export interface CandidateProfile {
   telefone: string | null;
   habilidades: string | null;
   skills: string[];
+  languages: CandidateLanguage[];
+  area?: JobArea | null;
+  avatar_url?: string | null;
   address: string | null;
+  genero?: string | null;
+  cargo_interesse?: string | null;
+  is_pcd: boolean;
+  escolaridade?: Escolaridade | null;
   created_at: string;
   updated_at: string;
   user?: { id: string; email: string };
@@ -150,6 +213,17 @@ export interface SavedCandidate {
   candidate?: { id: string; email: string; candidate_profile?: CandidateProfile | null };
 }
 
+export interface JobAlert {
+  id: string;
+  candidate_id: string;
+  keyword: string | null;
+  address: string | null;
+  work_model: WorkModel | null;
+  contract_type: ContractType | null;
+  is_pcd: boolean;
+  created_at: string;
+}
+
 export interface AdminAnalytics {
   total_users: number;
   total_companies: number;
@@ -178,6 +252,13 @@ export interface UploadResponse {
   size_bytes: number;
 }
 
+/** Documento de verificação não devolve URL: fica fora do storage público — ver GET /admin/companies/:id/verification-document. */
+export interface DocumentUploadResponse {
+  message: string;
+  filename: string;
+  size_bytes: number;
+}
+
 export interface ChatMessage {
   id: string;
   room_id: string;
@@ -185,13 +266,18 @@ export interface ChatMessage {
   content: string;
   is_read: boolean;
   created_at: string;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
+  attachment_type?: 'image' | 'document' | null;
+  edited_at?: string | null;
+  deleted_at?: string | null;
 }
 
 /** Resumo de sala de conversa */
 export interface ChatRoomSummary {
 
   id: string;
-  job_id: string;
+  job_id: string | null;
   candidate_id: string;
   employer_id: string;
   job_title: string;

@@ -13,17 +13,52 @@ interface Ack {
   messageId?: string;
 }
 
+interface TypingEvent {
+  roomId: string;
+  userId: string;
+}
+
+interface ReadEvent {
+  roomId: string;
+  readBy: string;
+}
+
+interface DeletedEvent {
+  roomId: string;
+  messageId: string;
+}
+
+export interface Attachment {
+  url: string;
+  name?: string;
+  type?: 'image' | 'document';
+}
+
 /**
  * Conexão socket.io autenticada via handshake.auth.token (nunca via query string,
  * que vazaria o JWT em logs de proxy/servidor).
  * Só websocket: evita long-polling e o CORS '*' que o gateway expõe hoje.
  */
-export function useChatSocket(onMessage: (m: ChatMessage) => void) {
+export function useChatSocket(
+  onMessage: (m: ChatMessage) => void,
+  onTyping?: (e: TypingEvent) => void,
+  onRead?: (e: ReadEvent) => void,
+  onEdited?: (m: ChatMessage) => void,
+  onDeleted?: (e: DeletedEvent) => void,
+) {
   const [status, setStatus] = useState<SocketStatus>('connecting');
   const [lastError, setLastError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const handlerRef = useRef(onMessage);
   handlerRef.current = onMessage;
+  const typingRef = useRef(onTyping);
+  typingRef.current = onTyping;
+  const readRef = useRef(onRead);
+  readRef.current = onRead;
+  const editedRef = useRef(onEdited);
+  editedRef.current = onEdited;
+  const deletedRef = useRef(onDeleted);
+  deletedRef.current = onDeleted;
 
   useEffect(() => {
     const token = getToken();
@@ -59,6 +94,18 @@ export function useChatSocket(onMessage: (m: ChatMessage) => void) {
     socket.on('newMessage', (m: unknown) => {
       if (isMessage(m)) handlerRef.current(m);
     });
+    socket.on('userTyping', (e: unknown) => {
+      if (isTypingEvent(e)) typingRef.current?.(e);
+    });
+    socket.on('messagesRead', (e: unknown) => {
+      if (isReadEvent(e)) readRef.current?.(e);
+    });
+    socket.on('messageEdited', (m: unknown) => {
+      if (isMessage(m)) editedRef.current?.(m);
+    });
+    socket.on('messageDeleted', (e: unknown) => {
+      if (isDeletedEvent(e)) deletedRef.current?.(e);
+    });
 
     return () => {
       socket.removeAllListeners();
@@ -75,18 +122,61 @@ export function useChatSocket(onMessage: (m: ChatMessage) => void) {
     return ack.roomId;
   };
 
-  const send = async (roomId: string, content: string): Promise<void> => {
+  const send = async (roomId: string, content: string, attachment?: Attachment): Promise<void> => {
     const s = socketRef.current;
     if (!s?.connected) throw new Error('Chat desconectado.');
-    const ack = (await s.timeout(8000).emitWithAck('sendMessage', { roomId, content })) as Ack;
+    const ack = (await s.timeout(8000).emitWithAck('sendMessage', {
+      roomId,
+      content: content || undefined,
+      attachmentUrl: attachment?.url,
+      attachmentName: attachment?.name,
+      attachmentType: attachment?.type,
+    })) as Ack;
     if (ack?.status !== 'sent') throw new Error('Mensagem não enviada.');
   };
 
-  return { status, lastError, joinRoom, send, clearError: () => setLastError(null) };
+  const editMessage = async (messageId: string, content: string): Promise<void> => {
+    const s = socketRef.current;
+    if (!s?.connected) throw new Error('Chat desconectado.');
+    const ack = (await s.timeout(8000).emitWithAck('editMessage', { messageId, content })) as Ack;
+    if (ack?.status !== 'edited') throw new Error('Mensagem não editada.');
+  };
+
+  const deleteMessage = async (messageId: string): Promise<void> => {
+    const s = socketRef.current;
+    if (!s?.connected) throw new Error('Chat desconectado.');
+    const ack = (await s.timeout(8000).emitWithAck('deleteMessage', { messageId })) as Ack;
+    if (ack?.status !== 'deleted') throw new Error('Mensagem não apagada.');
+  };
+
+  /** Fire-and-forget (sem ack): perder um evento de "digitando" não é grave. */
+  const typing = (roomId: string) => {
+    socketRef.current?.connected && socketRef.current.emit('typing', { roomId });
+  };
+
+  return { status, lastError, joinRoom, send, editMessage, deleteMessage, typing, clearError: () => setLastError(null) };
 }
 
 function isMessage(m: unknown): m is ChatMessage {
   if (!m || typeof m !== 'object') return false;
   const o = m as Record<string, unknown>;
   return typeof o.id === 'string' && typeof o.room_id === 'string' && typeof o.sender_id === 'string' && typeof o.content === 'string';
+}
+
+function isTypingEvent(e: unknown): e is TypingEvent {
+  if (!e || typeof e !== 'object') return false;
+  const o = e as Record<string, unknown>;
+  return typeof o.roomId === 'string' && typeof o.userId === 'string';
+}
+
+function isReadEvent(e: unknown): e is ReadEvent {
+  if (!e || typeof e !== 'object') return false;
+  const o = e as Record<string, unknown>;
+  return typeof o.roomId === 'string' && typeof o.readBy === 'string';
+}
+
+function isDeletedEvent(e: unknown): e is DeletedEvent {
+  if (!e || typeof e !== 'object') return false;
+  const o = e as Record<string, unknown>;
+  return typeof o.roomId === 'string' && typeof o.messageId === 'string';
 }

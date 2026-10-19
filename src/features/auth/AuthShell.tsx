@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ArrowLeftIcon, CheckCircleIcon } from '@/components/icons';
+import logoMark from '@/assets/logo-mark.svg';
 
 /** Layout dividido das telas de login/cadastro: painel de marca (desktop) + formulário. */
 export function AuthShell({
@@ -23,7 +24,17 @@ export function AuthShell({
 
   return (
     <div className="grid min-h-[calc(100dvh-4rem)] lg:grid-cols-[1fr_1.1fr]">
-      <section aria-hidden className="bg-brand panel-in relative m-4 hidden flex-col justify-center overflow-hidden rounded-2xl px-12 py-16 text-white lg:flex xl:px-16">
+      <section
+        aria-hidden
+        className="bg-brand panel-in relative m-4 hidden flex-col justify-center overflow-hidden rounded-2xl px-12 py-16 text-white lg:sticky lg:top-16 lg:flex lg:h-[calc(100dvh-4rem-2rem)] xl:px-16"
+      >
+        <div className="mb-10 flex items-center gap-3">
+          <img src={logoMark} alt="" className="size-14 drop-shadow-md" />
+          <span className="text-2xl font-extrabold tracking-tight">
+            <span className="text-white">Emprega</span>
+            <span className="text-yellow">Saquá</span>
+          </span>
+        </div>
         <h2 className="max-w-md text-4xl font-extrabold leading-tight tracking-tight">{aside.heading}</h2>
         <ul className="stagger mt-10 flex max-w-md flex-col gap-4 [--stagger-base:350ms]">
           {aside.points.map((p) => (

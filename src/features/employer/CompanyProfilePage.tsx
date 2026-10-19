@@ -13,6 +13,7 @@ import { IMAGE_TYPES, decodeEntities, isPdfFile, onlyDigits } from '@/lib/safe';
 import { errorMessage } from '@/lib/http';
 import { DangerZone } from '@/features/candidate/CandidateProfilePage';
 import { CompanyLogo } from '@/features/public/JobCard';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 const schema = z.object({
   nome_fantasia: z.string().trim().min(2, 'Informe o nome da empresa.').max(150),
@@ -41,6 +42,7 @@ const MAX_LOGO = 2 * 1024 * 1024;
 const MAX_DOC = 5 * 1024 * 1024;
 
 export default function CompanyProfilePage() {
+  useDocumentTitle("Perfil da empresa");
   const qc = useQueryClient();
   const toast = useToast();
   const profile = useQuery({ queryKey: ['company', 'me'], queryFn: ({ signal }) => usersApi.companyProfile(signal), retry: false });
@@ -182,6 +184,7 @@ function LogoUpload({ currentUrl, name }: { currentUrl?: string | null; name: st
 
 function VerificationUpload({ status }: { status?: string }) {
   const toast = useToast();
+  const qc = useQueryClient();
   const [localError, setLocalError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const upload = useMutation({
@@ -189,6 +192,8 @@ function VerificationUpload({ status }: { status?: string }) {
     onSuccess: () => {
       setSent(true);
       toast('Documento enviado. Aguarde a verificação.');
+      // Reenvio volta a empresa pra PENDING no back (ver UploadsController) — reflete aqui.
+      void qc.invalidateQueries({ queryKey: ['company', 'me'] });
     },
   });
 

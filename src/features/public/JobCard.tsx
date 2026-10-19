@@ -1,8 +1,9 @@
 import { Link } from 'react-router';
-import type { Job } from '@/api/types';
+import type { Job, JobArea } from '@/api/types';
 import { Badge } from '@/components/ui';
 import { SafeText } from '@/components/feedback';
-import { AccessibilityIcon, BriefcaseIcon, MapPinIcon, MonitorIcon } from '@/components/icons';
+import { AccessibilityIcon, BriefcaseIcon, HeartIcon, LockIcon, MapPinIcon, MonitorIcon } from '@/components/icons';
+import { toggleSavedJob, useSavedJobs } from '@/lib/savedJobs';
 import { CONTRACT_LABEL, WORK_MODEL_LABEL, relativeDate } from '@/lib/format';
 import { decodeEntities, safeAssetUrl } from '@/lib/safe';
 
@@ -28,11 +29,14 @@ const NEW_JOB_MS = 3 * 86_400_000;
  * Linha de classificado: logo | título, empresa e dados | salário e data alinhados à direita (como preço de anúncio).
  * No mobile a coluna da direita desce para baixo dos dados.
  */
-export function JobCard({ job }: { job: Job }) {
+export function JobCard({ job, candidateArea }: { job: Job; candidateArea?: JobArea | null }) {
   const company = job.employer?.company_profile?.nome_fantasia ?? 'Empresa';
   const created = new Date(job.created_at).getTime();
   const isNew = !Number.isNaN(created) && Date.now() - created < NEW_JOB_MS;
   const rel = relativeDate(job.created_at);
+  const saved = useSavedJobs().some((s) => s.id === job.id);
+  // Mesma regra do back (ApplicationsService#applyForJob): só bloqueia quando AMBOS têm área definida e diferem.
+  const areaBlocked = !!job.area && !!candidateArea && job.area !== candidateArea;
   return (
     <article className="group relative grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 p-5 transition-colors hover:bg-surface-2 focus-within:bg-surface-2 sm:grid-cols-[auto_1fr_auto] sm:gap-x-6 sm:p-6">
       <CompanyLogo name={company} url={job.employer?.company_profile?.logo_url} size={48} />
@@ -44,6 +48,11 @@ export function JobCard({ job }: { job: Job }) {
           {isNew && (
             <span className="ml-2 align-middle">
               <Badge tone="green">Nova</Badge>
+            </span>
+          )}
+          {areaBlocked && (
+            <span className="ml-2 align-middle">
+              <Badge tone="danger"><LockIcon size={12} /> Fora da sua área</Badge>
             </span>
           )}
         </h2>
@@ -71,7 +80,7 @@ export function JobCard({ job }: { job: Job }) {
           )}
         </ul>
       </div>
-      <div className="col-start-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 sm:col-start-3 sm:row-start-1 sm:flex-col sm:items-end sm:justify-start sm:text-right">
+      <div className="col-start-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 sm:col-start-3 sm:row-start-1 sm:flex-col sm:items-end sm:justify-start sm:pt-9 sm:text-right">
         {job.salary_range && job.is_salary_visible ? (
           <span className="whitespace-nowrap font-bold text-green-ink">
             <SafeText>{job.salary_range}</SafeText>
@@ -81,6 +90,22 @@ export function JobCard({ job }: { job: Job }) {
         )}
         <span className="whitespace-nowrap text-xs text-muted sm:mt-1">Publicada {/^\d/.test(rel) ? `em ${rel}` : rel}</span>
       </div>
+      <SaveJobButton job={job} company={company} saved={saved} />
     </article>
+  );
+}
+
+/** Coração para salvar a vaga. Fica acima do link do card (z-10) para não abrir a vaga ao clicar. */
+export function SaveJobButton({ job, company, saved, className }: { job: Job; company: string; saved: boolean; className?: string }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={saved}
+      aria-label={saved ? 'Remover das vagas salvas' : 'Salvar vaga'}
+      onClick={() => toggleSavedJob({ id: job.id, title: decodeEntities(job.title), company: decodeEntities(company), address: decodeEntities(job.address) })}
+      className={className ?? 'absolute right-3 top-3 z-10 flex size-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-primary-soft hover:text-primary sm:right-4 sm:top-4'}
+    >
+      <HeartIcon size={20} filled={saved} className={saved ? 'text-primary' : undefined} />
+    </button>
   );
 }

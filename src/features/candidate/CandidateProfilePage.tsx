@@ -1,22 +1,28 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { Link } from 'react-router';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { candidatesApi, usersApi, type CandidateProfileInput } from '@/api/endpoints';
-import type { CandidateProfile } from '@/api/types';
-import { useAuthActions, useSession } from '@/auth/useAuth';
-import { Button, Card, CardSectionTitle, ConfirmDialog, Field, Input, PageHeader, PageLoader, Textarea } from '@/components/ui';
-import { ApiErrorAlert, useToast } from '@/components/feedback';
+import { applicationsApi, candidatesApi, jobsApi, uploadsApi, usersApi, type CandidateProfileInput } from '@/api/endpoints';
+import type { ApplicationStatus, CandidateProfile, Escolaridade, Idioma, Job, JobArea, NivelIdioma } from '@/api/types';
+import { useSession } from '@/auth/useAuth';
+import { Badge, Button, Card, CardSectionTitle, Checkbox, ConfirmDialog, Field, Input, PageHeader, PageLoader, Select, Skeleton, Textarea, buttonClass } from '@/components/ui';
+import { ApiErrorAlert, SafeText, useToast } from '@/components/feedback';
 import { CepLookup, StringListInput, cepToAddress } from '@/components/inputs';
-import { BriefcaseIcon, FileTextIcon, GraduationCapIcon, IdentificationCardIcon, SparkleIcon, TrashIcon } from '@/components/icons';
-import { decodeEntities, onlyDigits } from '@/lib/safe';
+import { BriefcaseIcon, CameraIcon, FileTextIcon, GraduationCapIcon, IdentificationCardIcon, SparkleIcon, TranslateIcon, TrashIcon } from '@/components/icons';
+import { APPLICATION_STATUS_LABEL, ESCOLARIDADE_LABEL, IDIOMA_LABEL, JOB_AREA_LABEL, NIVEL_IDIOMA_LABEL, formatDate } from '@/lib/format';
+import { IMAGE_TYPES, decodeEntities, onlyDigits, safeAssetUrl } from '@/lib/safe';
 import { errorMessage } from '@/lib/http';
 import { ResumePreview } from './ResumePreview';
+import { profileCompleteness } from '@/lib/profile';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 const month = z.string().regex(/^\d{4}-\d{2}$/, 'Use o formato AAAA-MM.');
 const optionalMonth = z.union([month, z.literal('')]).optional();
+const IDIOMAS = Object.keys(IDIOMA_LABEL) as [Idioma, ...Idioma[]];
+const NIVEIS_IDIOMA = Object.keys(NIVEL_IDIOMA_LABEL) as [NivelIdioma, ...NivelIdioma[]];
+const ESCOLARIDADES = Object.keys(ESCOLARIDADE_LABEL) as [Escolaridade, ...Escolaridade[]];
 
 const schema = z.object({
   full_name: z.string().trim().max(150),
@@ -26,7 +32,21 @@ const schema = z.object({
     .trim()
     .refine((v) => v === '' || /^\d{10,13}$/.test(onlyDigits(v)), 'Telefone com DDD (10 a 13 dígitos).'),
   address: z.string().trim().max(200),
+  genero: z.string(),
+  cargo_interesse: z.string().trim().max(150),
+  is_pcd: z.boolean(),
+  escolaridade: z.union([z.enum(ESCOLARIDADES), z.literal('')]),
   skills: z.array(z.string().trim().min(1).max(50)).max(30),
+  languages: z
+    .array(
+      z.object({
+        idioma: z.enum(IDIOMAS),
+        idioma_outro: z.string().trim().max(50),
+        nivel: z.enum(NIVEIS_IDIOMA),
+      }),
+    )
+    .max(20),
+  area: z.string(),
   experiences: z
     .array(
       z.object({
@@ -52,7 +72,21 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 
-const EMPTY: Values = { full_name: '', bio: '', telefone: '', address: '', skills: [], experiences: [], educations: [] };
+const EMPTY: Values = {
+  full_name: '',
+  bio: '',
+  telefone: '',
+  address: '',
+  genero: '',
+  cargo_interesse: '',
+  is_pcd: false,
+  escolaridade: '',
+  skills: [],
+  languages: [],
+  area: '',
+  experiences: [],
+  educations: [],
+};
 
 function toValues(p: CandidateProfile): Values {
   return {
@@ -60,7 +94,13 @@ function toValues(p: CandidateProfile): Values {
     bio: decodeEntities(p.bio),
     telefone: p.telefone ?? '',
     address: decodeEntities(p.address),
+    genero: p.genero ?? '',
+    cargo_interesse: decodeEntities(p.cargo_interesse ?? ''),
+    is_pcd: p.is_pcd,
+    escolaridade: p.escolaridade ?? '',
     skills: (p.skills ?? []).map(decodeEntities),
+    languages: (p.languages ?? []).map((l) => ({ idioma: l.idioma, idioma_outro: decodeEntities(l.idioma_outro ?? ''), nivel: l.nivel })),
+    area: p.area ?? '',
     experiences: (p.experiences ?? []).map((e) => ({
       company: decodeEntities(e.company),
       role: decodeEntities(e.role),
@@ -79,6 +119,7 @@ function toValues(p: CandidateProfile): Values {
 }
 
 export default function CandidateProfilePage() {
+  useDocumentTitle("Meu currículo");
   const qc = useQueryClient();
   const toast = useToast();
   const session = useSession();
@@ -87,6 +128,8 @@ export default function CandidateProfilePage() {
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: EMPTY });
   const exps = useFieldArray({ control: form.control, name: 'experiences' });
   const edus = useFieldArray({ control: form.control, name: 'educations' });
+  const langs = useFieldArray({ control: form.control, name: 'languages' });
+  const languageValues = useWatch({ control: form.control, name: 'languages' });
   const { errors, dirtyFields, isDirty } = form.formState;
   const liveValues = useWatch({ control: form.control });
 
@@ -103,7 +146,15 @@ export default function CandidateProfilePage() {
       if (dirtyFields.bio) body.bio = v.bio;
       if (dirtyFields.telefone) body.telefone = onlyDigits(v.telefone);
       if (dirtyFields.address) body.address = v.address;
+      if (dirtyFields.genero) body.genero = v.genero;
+      if (dirtyFields.cargo_interesse) body.cargo_interesse = v.cargo_interesse;
+      if (dirtyFields.is_pcd) body.is_pcd = v.is_pcd;
+      if (dirtyFields.escolaridade) body.escolaridade = (v.escolaridade || undefined) as Escolaridade | undefined;
       if (dirtyFields.skills) body.skills = v.skills;
+      if (dirtyFields.languages) {
+        body.languages = v.languages.map((l) => ({ idioma: l.idioma, idioma_outro: l.idioma === 'OUTRO' ? l.idioma_outro || undefined : undefined, nivel: l.nivel }));
+      }
+      if (dirtyFields.area) body.area = (v.area || undefined) as JobArea | undefined;
       if (dirtyFields.experiences) body.experiences = v.experiences.map((e) => ({ ...e, end_date: e.end_date || undefined }));
       if (dirtyFields.educations) body.educations = v.educations.map((e) => ({ ...e, end_date: e.end_date || undefined }));
       return candidatesApi.updateProfile(body);
@@ -126,10 +177,14 @@ export default function CandidateProfilePage() {
       />
       {profile.isError && <div className="mb-6"><ApiErrorAlert error={profile.error} /></div>}
 
+      <ProgressCard values={liveValues} />
+      <MyApplicationsCard />
+
       <div className="grid gap-8 lg:grid-cols-[1fr_24rem]">
         <form noValidate className="flex flex-col gap-6" onSubmit={form.handleSubmit((v) => save.mutate(v))}>
           <Card>
             <CardSectionTitle icon={<IdentificationCardIcon size={18} />} title="Sobre você" />
+            <AvatarUpload avatarUrl={profile.data?.avatar_url} />
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Nome completo" error={errors.full_name?.message} className="sm:col-span-2" required>
                 {({ id, describedBy, invalid }) => <Input id={id} maxLength={150} autoComplete="name" aria-describedby={describedBy} invalid={invalid} {...form.register('full_name')} />}
@@ -144,6 +199,38 @@ export default function CandidateProfilePage() {
                 {({ id, describedBy, invalid }) => <Input id={id} autoComplete="street-address" maxLength={200} aria-describedby={describedBy} invalid={invalid} {...form.register('address')} />}
               </Field>
               <CepLookup className="sm:col-span-2" onFound={(r) => form.setValue('address', cepToAddress(r), { shouldDirty: true, shouldValidate: true })} />
+              <Field label="Área de atuação" error={errors.area?.message} className="sm:col-span-2" hint="Vagas de outras áreas não vão aparecer como opção pra você se candidatar.">
+                {({ id }) => (
+                  <Select id={id} {...form.register('area')}>
+                    <option value="">Não informar (ver vagas de qualquer área)</option>
+                    {(Object.keys(JOB_AREA_LABEL) as JobArea[]).map((a) => <option key={a} value={a}>{JOB_AREA_LABEL[a]}</option>)}
+                  </Select>
+                )}
+              </Field>
+              <Field label="Cargo de interesse" error={errors.cargo_interesse?.message}>
+                {({ id, invalid }) => <Input id={id} maxLength={150} placeholder="Ex.: Auxiliar administrativo" invalid={invalid} {...form.register('cargo_interesse')} />}
+              </Field>
+              <Field label="Gênero" error={errors.genero?.message}>
+                {({ id }) => (
+                  <Select id={id} {...form.register('genero')}>
+                    <option value="">Prefiro não informar</option>
+                    <option value="FEMININO">Feminino</option>
+                    <option value="MASCULINO">Masculino</option>
+                    <option value="OUTRO">Outro</option>
+                  </Select>
+                )}
+              </Field>
+              <Field label="Escolaridade" error={errors.escolaridade?.message} className="sm:col-span-2">
+                {({ id }) => (
+                  <Select id={id} {...form.register('escolaridade')}>
+                    <option value="">Não informar</option>
+                    {ESCOLARIDADES.map((e) => <option key={e} value={e}>{ESCOLARIDADE_LABEL[e]}</option>)}
+                  </Select>
+                )}
+              </Field>
+              <div className="sm:col-span-2">
+                <Checkbox label="Sou pessoa com deficiência (PCD)" {...form.register('is_pcd')} />
+              </div>
             </div>
           </Card>
 
@@ -154,6 +241,50 @@ export default function CandidateProfilePage() {
               name="skills"
               render={({ field }) => <StringListInput value={field.value} onChange={field.onChange} placeholder="Ex.: Atendimento ao cliente" maxItems={30} maxLength={50} />}
             />
+          </Card>
+
+          <Card>
+            <div className="mb-5 flex items-center justify-between">
+              <CardSectionTitle icon={<TranslateIcon size={18} />} title="Idiomas" className="mb-0" />
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={langs.fields.length >= 20}
+                onClick={() => langs.append({ idioma: 'INGLES', idioma_outro: '', nivel: 'BASICO' })}
+              >
+                Adicionar
+              </Button>
+            </div>
+            {langs.fields.length === 0 && <EmptyHint text="Nenhum idioma adicionado ainda." />}
+            <div className="flex flex-col gap-3">
+              {langs.fields.map((f, i) => (
+                <div key={f.id} className="grid gap-3 rounded-xl border border-border p-3 sm:grid-cols-[1fr_1fr_auto]">
+                  <Field label="Idioma">
+                    {({ id }) => (
+                      <Select id={id} {...form.register(`languages.${i}.idioma`)}>
+                        {IDIOMAS.map((idm) => <option key={idm} value={idm}>{IDIOMA_LABEL[idm]}</option>)}
+                      </Select>
+                    )}
+                  </Field>
+                  {languageValues?.[i]?.idioma === 'OUTRO' && (
+                    <Field label="Qual idioma?">
+                      {({ id, invalid }) => <Input id={id} maxLength={50} invalid={invalid} {...form.register(`languages.${i}.idioma_outro`)} />}
+                    </Field>
+                  )}
+                  <Field label="Nível">
+                    {({ id }) => (
+                      <Select id={id} {...form.register(`languages.${i}.nivel`)}>
+                        {NIVEIS_IDIOMA.map((n) => <option key={n} value={n}>{NIVEL_IDIOMA_LABEL[n]}</option>)}
+                      </Select>
+                    )}
+                  </Field>
+                  <div className="flex items-end">
+                    <Button type="button" size="sm" variant="danger-ghost" onClick={() => langs.remove(i)}><TrashIcon size={14} /> Remover</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </Card>
 
           <Card>
@@ -219,11 +350,13 @@ export default function CandidateProfilePage() {
           <ResumePreview
             email={session?.user.email ?? ''}
             fullName={liveValues.full_name || ''}
+            avatarUrl={profile.data?.avatar_url}
             values={{
               bio: liveValues.bio ?? '',
               telefone: liveValues.telefone ?? '',
               address: liveValues.address ?? '',
               skills: (liveValues.skills ?? []).filter((s): s is string => !!s),
+              languages: (liveValues.languages ?? []).filter((l): l is Values['languages'][number] => !!l?.idioma),
               experiences: (liveValues.experiences ?? []).filter((e): e is Values['experiences'][number] => !!e?.company || !!e?.role),
               educations: (liveValues.educations ?? []).filter((e): e is Values['educations'][number] => !!e?.institution || !!e?.degree),
             }}
@@ -236,8 +369,151 @@ export default function CandidateProfilePage() {
   );
 }
 
+/** Barra de progresso do currículo: mostra o que falta e cresce enquanto a pessoa digita. */
+function ProgressCard({ values }: { values: Parameters<typeof profileCompleteness>[0] }) {
+  const { percent, missing } = profileCompleteness(values);
+  return (
+    <Card className="mb-8">
+      <div className="flex items-center justify-between gap-4">
+        <p className="font-bold">Seu currículo está {percent}% completo</p>
+        <span className="text-sm text-muted">{percent === 100 ? 'Tudo pronto!' : `Falta: ${missing.slice(0, 3).join(', ')}${missing.length > 3 ? '…' : ''}`}</span>
+      </div>
+      <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100} aria-label="Progresso do currículo">
+        <div className="h-full rounded-full bg-green transition-[width] duration-500" style={{ width: `${percent}%` }} />
+      </div>
+    </Card>
+  );
+}
+
+const STATUS_TONE: Record<ApplicationStatus, 'neutral' | 'primary' | 'success' | 'warning' | 'danger'> = {
+  APPLIED: 'neutral',
+  REVIEWING: 'primary',
+  INTERVIEW: 'warning',
+  HIRED: 'success',
+  REJECTED: 'danger',
+};
+const MAX_SHOWN = 4;
+
+/**
+ * Resumo das vagas em que a pessoa se candidatou, direto no perfil. A lista completa (com retirar
+ * candidatura e mensagem) continua em "Minhas candidaturas" — aqui é só um retrato rápido.
+ */
+function MyApplicationsCard() {
+  const apps = useQuery({ queryKey: ['applications', 'mine'], queryFn: ({ signal }) => applicationsApi.mine(signal) });
+
+  // GET /applications não inclui a vaga: buscamos cada uma (cacheadas, mesma queryKey da lista completa).
+  const jobIds = [...new Set((apps.data ?? []).map((a) => a.job_id))];
+  const jobs = useQueries({
+    queries: jobIds.map((id) => ({
+      queryKey: ['jobs', 'detail', id],
+      queryFn: ({ signal }: { signal: AbortSignal }) => jobsApi.get(id, signal),
+      staleTime: 5 * 60_000,
+      retry: false,
+    })),
+  });
+  const jobById = new Map<string, Job>();
+  jobs.forEach((q, i) => {
+    const id = jobIds[i];
+    if (q.data && id) jobById.set(id, q.data);
+  });
+
+  if (apps.isPending) return <Skeleton className="mb-8 h-32" />;
+  if (apps.isError || apps.data.length === 0) return null;
+
+  const list = [...apps.data].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const shown = list.slice(0, MAX_SHOWN);
+
+  return (
+    <Card className="mb-8">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <CardSectionTitle icon={<BriefcaseIcon size={18} />} title="Vagas em que você se candidatou" className="mb-0" />
+        {list.length > MAX_SHOWN && (
+          <Link to="/candidato/candidaturas" className="text-sm font-semibold text-primary hover:underline">Ver todas ({list.length})</Link>
+        )}
+      </div>
+      <ul className="flex flex-col divide-y divide-border">
+        {shown.map((app) => {
+          const job = jobById.get(app.job_id);
+          return (
+            <li key={app.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+              <div className="min-w-0">
+                {job ? (
+                  <Link to={`/vagas/${encodeURIComponent(job.id)}`} className="font-semibold hover:text-primary hover:underline">
+                    <SafeText>{job.title}</SafeText>
+                  </Link>
+                ) : (
+                  <span className="font-semibold text-muted">Vaga indisponível</span>
+                )}
+                <p className="text-sm text-muted">
+                  {job?.employer?.company_profile?.nome_fantasia && <><SafeText>{job.employer.company_profile.nome_fantasia}</SafeText> · </>}
+                  Enviada em {formatDate(app.created_at)}
+                </p>
+              </div>
+              <Badge tone={STATUS_TONE[app.status]}>{APPLICATION_STATUS_LABEL[app.status]}</Badge>
+            </li>
+          );
+        })}
+      </ul>
+      {list.length <= MAX_SHOWN && (
+        <Link to="/candidato/candidaturas" className={buttonClass('secondary', 'sm', 'mt-4')}>Ver detalhes e gerenciar</Link>
+      )}
+    </Card>
+  );
+}
+
 function EmptyHint({ text }: { text: string }) {
   return <p className="mb-4 text-sm text-muted">{text}</p>;
+}
+
+const MAX_AVATAR = 2 * 1024 * 1024;
+
+function AvatarUpload({ avatarUrl }: { avatarUrl?: string | null }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+
+  const upload = useMutation({
+    mutationFn: (f: File) => uploadsApi.avatar(f),
+    onSuccess: () => {
+      toast('Foto de perfil enviada.');
+      void qc.invalidateQueries({ queryKey: ['candidate', 'me'] });
+    },
+  });
+
+  const onChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    setLocalError(null);
+    if (!(IMAGE_TYPES as readonly string[]).includes(f.type)) return setLocalError('Use JPEG, PNG, WebP ou GIF.');
+    if (f.size > MAX_AVATAR) return setLocalError('A imagem deve ter no máximo 2MB.');
+    setPreview(URL.createObjectURL(f));
+    upload.mutate(f);
+  };
+
+  const shown = preview ?? safeAssetUrl(avatarUrl);
+
+  return (
+    <div className="mb-5 flex items-center gap-4">
+      {shown ? (
+        <img src={shown} alt="Foto de perfil" className="size-16 rounded-full border border-border object-cover" />
+      ) : (
+        <span className="flex size-16 items-center justify-center rounded-full bg-surface-2 text-muted"><IdentificationCardIcon size={28} /></span>
+      )}
+      <div>
+        <input ref={inputRef} type="file" accept={IMAGE_TYPES.join(',')} className="hidden" onChange={onChange} tabIndex={-1} aria-hidden />
+        <Button type="button" variant="secondary" size="sm" onClick={() => inputRef.current?.click()} disabled={upload.isPending}>
+          <CameraIcon size={14} /> {upload.isPending ? 'Enviando…' : 'Alterar foto'}
+        </Button>
+        {localError && <p className="mt-1.5 text-xs text-danger" role="alert">{localError}</p>}
+        {upload.isError && <p className="mt-1.5 text-xs text-danger" role="alert">{errorMessage(upload.error)}</p>}
+      </div>
+    </div>
+  );
 }
 
 function ResumeDownload() {
@@ -271,36 +547,51 @@ function ResumeDownload() {
 }
 
 export function DangerZone() {
-  const { logout } = useAuthActions();
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
-  const del = useMutation({
-    mutationFn: () => usersApi.deleteAccount(),
-    onSuccess: () => {
-      logout();
-      navigate('/', { replace: true });
-    },
+  const req = useMutation({
+    mutationFn: () => usersApi.requestAccountDeletion(),
   });
   return (
     <Card className="mt-10 border-danger/40">
       <h2 className="font-bold text-danger">Excluir conta</h2>
-      <p className="mt-1 text-sm text-muted">Seus dados pessoais serão anonimizados (LGPD). Essa ação não pode ser desfeita.</p>
+      <p className="mt-1 text-sm text-muted">
+        Excluímos permanentemente todos os seus dados do site (perfil, vagas, candidaturas, mensagens). Essa ação não pode ser desfeita.
+      </p>
       <Button variant="danger" className="mt-4" onClick={() => setOpen(true)}>Excluir minha conta</Button>
       <ConfirmDialog
         open={open}
         title="Excluir sua conta?"
-        description='Digite "EXCLUIR" para confirmar.'
-        confirmLabel="Excluir definitivamente"
-        loading={del.isPending}
-        onConfirm={() => confirmText === 'EXCLUIR' && del.mutate()}
+        description={
+          req.isSuccess
+            ? undefined
+            : 'Digite "EXCLUIR" para receber um e-mail de confirmação. Nada é apagado até você clicar no link do e-mail.'
+        }
+        confirmLabel={req.isSuccess ? 'Fechar' : 'Enviar e-mail de confirmação'}
+        loading={req.isPending}
+        onConfirm={() => {
+          if (req.isSuccess) {
+            setOpen(false);
+            setConfirmText('');
+            req.reset();
+          } else if (confirmText === 'EXCLUIR') {
+            req.mutate();
+          }
+        }}
         onClose={() => {
           setOpen(false);
           setConfirmText('');
+          req.reset();
         }}
       >
-        <Input aria-label="Confirmação" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} autoComplete="off" />
-        {del.isError && <p className="mt-2 text-xs text-danger">{errorMessage(del.error)}</p>}
+        {req.isSuccess ? (
+          <p className="text-sm text-fg">{req.data.message}</p>
+        ) : (
+          <>
+            <Input aria-label="Confirmação" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} autoComplete="off" />
+            {req.isError && <p className="mt-2 text-xs text-danger">{errorMessage(req.error)}</p>}
+          </>
+        )}
       </ConfirmDialog>
     </Card>
   );

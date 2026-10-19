@@ -1,11 +1,15 @@
 import { useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { talentPoolApi } from '@/api/endpoints';
 import type { CandidateProfile } from '@/api/types';
+import { useSession } from '@/auth/useAuth';
+import { chatLink } from '@/features/chat/chatLink';
 import { Button, ConfirmDialog, Textarea } from '@/components/ui';
 import { SafeParagraphs, SafeText, useToast } from '@/components/feedback';
+import { MessageIcon } from '@/components/icons';
 import { ApiError } from '@/lib/http';
-import { formatMonthYear, formatPhone } from '@/lib/format';
+import { ESCOLARIDADE_LABEL, IDIOMA_LABEL, NIVEL_IDIOMA_LABEL, formatMonthYear, formatPhone } from '@/lib/format';
 import { whatsappLink } from '@/lib/safe';
 
 /** Resumo do candidato para a visão da empresa. Tudo renderizado como texto. */
@@ -51,6 +55,26 @@ export function CandidateSummary({ email, profile, extra, actions }: { email?: s
                   </p>
                 </div>
               )}
+              {(profile.escolaridade || profile.cargo_interesse) && (
+                <div>
+                  <h4 className="mb-1 font-medium">Formação e interesse</h4>
+                  <p className="text-muted">
+                    {profile.escolaridade && ESCOLARIDADE_LABEL[profile.escolaridade]}
+                    {profile.escolaridade && profile.cargo_interesse && ' · '}
+                    {profile.cargo_interesse && <SafeText>{profile.cargo_interesse}</SafeText>}
+                  </p>
+                </div>
+              )}
+              {!!profile.languages?.length && (
+                <div>
+                  <h4 className="mb-1 font-medium">Idiomas</h4>
+                  <p className="text-muted">
+                    {profile.languages
+                      .map((l) => `${l.idioma === 'OUTRO' && l.idioma_outro ? l.idioma_outro : IDIOMA_LABEL[l.idioma]} (${NIVEL_IDIOMA_LABEL[l.nivel]})`)
+                      .join(', ')}
+                  </p>
+                </div>
+              )}
               {!!profile.experiences?.length && (
                 <div className="sm:col-span-2">
                   <h4 className="mb-1 font-medium">Experiência</h4>
@@ -81,6 +105,22 @@ export function CandidateSummary({ email, profile, extra, actions }: { email?: s
         </>
       )}
     </article>
+  );
+}
+
+/** Abre (ou cria) uma conversa direta com o candidato, sem precisar de uma vaga/candidatura. */
+export function MessageCandidateButton({ candidateId, size = 'sm' }: { candidateId: string; size?: 'sm' | 'md' }) {
+  const session = useSession();
+  const navigate = useNavigate();
+  if (!session) return null;
+  return (
+    <Button
+      size={size}
+      variant="secondary"
+      onClick={() => navigate(chatLink({ employerId: session.user.id, candidateId }))}
+    >
+      <MessageIcon size={14} /> Mensagem
+    </Button>
   );
 }
 

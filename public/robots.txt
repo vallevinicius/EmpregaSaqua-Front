@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /empresa
+Disallow: /admin
+Disallow: /candidato
+Disallow: /mensagens

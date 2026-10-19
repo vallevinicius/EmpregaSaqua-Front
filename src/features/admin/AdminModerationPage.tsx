@@ -6,10 +6,13 @@ import { Button, Card, EmptyState, Input, PageHeader, Pagination, Skeleton, cx }
 import { ErrorState, SafeText, useToast } from '@/components/feedback';
 import { CONTRACT_LABEL, WORK_MODEL_LABEL, formatDate } from '@/lib/format';
 import { UUID_RE } from './uuid';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { VerificationDocumentButton } from './VerificationDocumentButton';
 
 type Tab = 'jobs' | 'companies';
 
 export default function AdminModerationPage() {
+  useDocumentTitle("Moderação");
   const [tab, setTab] = useState<Tab>('jobs');
   return (
     <div>
@@ -64,7 +67,7 @@ function PendingJobs() {
       {q.isPending ? (
         <Skeleton className="h-40" />
       ) : q.isError ? (
-        <ErrorState error={q.error} onRetry={() => void q.refetch()} pending={{ endpoint: 'GET /admin/jobs?status=PENDING', feature: 'Fila de vagas pendentes' }} />
+        <ErrorState error={q.error} onRetry={() => void q.refetch()} />
       ) : q.data.data.length === 0 ? (
         <EmptyState title="Nenhuma vaga pendente" />
       ) : (
@@ -99,7 +102,7 @@ function PendingCompanies() {
       {q.isPending ? (
         <Skeleton className="h-40" />
       ) : q.isError ? (
-        <ErrorState error={q.error} onRetry={() => void q.refetch()} pending={{ endpoint: 'GET /admin/companies?status=PENDING', feature: 'Fila de empresas pendentes' }} />
+        <ErrorState error={q.error} onRetry={() => void q.refetch()} />
       ) : q.data.data.length === 0 ? (
         <EmptyState title="Nenhuma empresa pendente" />
       ) : (
@@ -113,10 +116,7 @@ function PendingCompanies() {
                     {c.user?.email ?? '-'} · CNPJ {c.cnpj ?? 'não informado'} · {formatDate(c.created_at)}
                   </p>
                   {c.verification_document_url ? (
-                    <div className="mt-2 flex items-center gap-3">
-                      <span className="text-xs text-muted">Documento disponível</span>
-                      <VerificationDocumentButton companyId={c.id} />
-                    </div>
+                    <div className="mt-1"><VerificationDocumentButton companyId={c.id} /></div>
                   ) : (
                     <p className="mt-1 text-sm text-warning">Sem documento enviado</p>
                   )}
@@ -132,35 +132,6 @@ function PendingCompanies() {
     </div>
   );
 }
-
-function VerificationDocumentButton({ companyId }: { companyId: string }) {
-  const [loading, setLoading] = useState(false);
-  const toast = useToast();
-
-  const handleOpen = async () => {
-    setLoading(true);
-    try {
-      const blob = await adminApi.getVerificationDocument(companyId);
-      const url = URL.createObjectURL(blob);
-      const win = window.open(url, '_blank', 'noopener,noreferrer');
-      if (!win) {
-        toast('Permita pop-ups no navegador para visualizar o documento.', 'primary');
-      }
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch {
-      toast('Não foi possível carregar o documento.', 'danger');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Button size="sm" variant="secondary" onClick={handleOpen} loading={loading}>
-      Ver documento
-    </Button>
-  );
-}
-
 
 function ApproveReject({ onApprove, onReject, disabled }: { onApprove: () => void; onReject: () => void; disabled?: boolean }) {
   return (

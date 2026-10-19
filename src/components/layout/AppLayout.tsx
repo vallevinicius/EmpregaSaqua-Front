@@ -2,15 +2,15 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, matchPath, useLocation, useNavigate } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthActions, useSession } from '@/auth/useAuth';
-import { chatApi } from '@/api/endpoints';
+import { candidatesApi, chatApi } from '@/api/endpoints';
 import { consumeLogoutReason, subscribe } from '@/auth/session';
 import { Button, buttonClass, cx } from '../ui';
-import { LogOutIcon, MenuIcon, XIcon } from '../icons';
-import logo from '@/assets/logo.svg';
-import logoInverted from '@/assets/logo-inverted.svg';
+import { LogOutIcon, MenuIcon, ShieldCheckIcon, XIcon } from '../icons';
+import logoFull from '@/assets/logo-full.png';
 import { useToast } from '../feedback';
 import type { Role } from '@/api/types';
 import { ROLE_LABEL } from '@/lib/format';
+import { safeAssetUrl } from '@/lib/safe';
 
 interface NavItem {
   to: string;
@@ -22,10 +22,12 @@ const NAV: Record<Role | 'PUBLIC', NavItem[]> = {
   PUBLIC: [
     { to: '/', label: 'Vagas', end: true },
     { to: '/curriculo', label: 'Crie seu currículo' },
+    { to: '/vagas-salvas', label: 'Vagas salvas' },
   ],
   JOB_SEEKER: [
     { to: '/', label: 'Vagas', end: true },
     { to: '/candidato/candidaturas', label: 'Minhas candidaturas' },
+    { to: '/vagas-salvas', label: 'Vagas salvas' },
     { to: '/candidato/perfil', label: 'Meu currículo' },
     { to: '/mensagens', label: 'Mensagens' },
   ],
@@ -37,12 +39,9 @@ const NAV: Record<Role | 'PUBLIC', NavItem[]> = {
     { to: '/mensagens', label: 'Mensagens' },
     { to: '/empresa/perfil', label: 'Empresa' },
   ],
-  ADMIN: [
-    { to: '/admin', label: 'Painel', end: true },
-    { to: '/admin/moderacao', label: 'Moderação' },
-    { to: '/admin/usuarios', label: 'Usuários' },
-    { to: '/', label: 'Vagas públicas', end: true },
-  ],
+  // A navegação interna do admin (Moderação/Vagas/Empresas/Usuários) vive nas abas de AdminLayout,
+  // não aqui — isso evita lotar a navbar principal com itens de uma única área.
+  ADMIN: [{ to: '/', label: 'Vagas públicas', end: true }],
 };
 
 const FULL_BLEED = ['/', '/vagas/:id', '/entrar', '/cadastro'];
@@ -69,6 +68,14 @@ export function AppLayout() {
   const role = session?.user.role;
   const items = NAV[role ?? 'PUBLIC'];
   const unread = useUnreadCount(!!session && role !== 'ADMIN');
+  const candidateMe = useQuery({
+    queryKey: ['candidate', 'me'],
+    queryFn: ({ signal }) => candidatesApi.me(signal),
+    enabled: role === 'JOB_SEEKER',
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const avatarUrl = safeAssetUrl(candidateMe.data?.avatar_url);
 
   useEffect(() => setMenuOpen(false), [location.pathname]);
 
@@ -127,18 +134,29 @@ export function AppLayout() {
         Pular para o conteúdo
       </a>
       <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:px-6">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-8 px-4 sm:px-6">
           <Logo />
-          <nav aria-label="Principal" className="ml-6 hidden items-center lg:flex">
+          {/* Nav colado no logo (padrão mais comum de navbar); a área de sessão vai pro extremo
+              direito sozinha via ml-auto, sem depender da largura dela pra posicionar o nav. */}
+          <nav aria-label="Principal" className="hidden items-center lg:flex">
             {items.map((i) => navLink(i))}
           </nav>
           <div className="ml-auto flex items-center gap-2">
             {session ? (
               <>
+                {role === 'ADMIN' && (
+                  <Link to="/admin" className={buttonClass('secondary', 'sm', 'max-sm:hidden')}>
+                    <ShieldCheckIcon size={16} /> Painel de admin
+                  </Link>
+                )}
                 <div className="hidden items-center gap-3 md:flex">
-                  <span className="flex size-9 items-center justify-center rounded-full bg-primary-soft text-sm font-bold uppercase text-primary" aria-hidden>
-                    {session.user.email.slice(0, 1)}
-                  </span>
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="size-9 shrink-0 rounded-full border border-border object-cover" />
+                  ) : (
+                    <span className="flex size-9 items-center justify-center rounded-full bg-primary-soft text-sm font-bold uppercase text-primary" aria-hidden>
+                      {session.user.email.slice(0, 1)}
+                    </span>
+                  )}
                   <span className="text-xs leading-tight">
                     <span className="block max-w-[12rem] truncate font-semibold">{session.user.email}</span>
                     <span className="text-muted">{ROLE_LABEL[session.user.role]}</span>
@@ -175,6 +193,11 @@ export function AppLayout() {
         </div>
         {menuOpen && (
           <nav id="menu-mobile" aria-label="Principal (mobile)" className="flex flex-col gap-1 border-t border-border px-4 py-3 lg:hidden">
+            {role === 'ADMIN' && (
+              <Link to="/admin" className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-primary hover:bg-surface-2">
+                <ShieldCheckIcon size={16} /> Painel de admin
+              </Link>
+            )}
             {items.map((i) => navLink(i, true))}
             {session ? (
               <button type="button" onClick={doLogout} className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-danger hover:bg-danger-soft sm:hidden">
@@ -199,13 +222,13 @@ export function AppLayout() {
 
 function Logo({ inverted }: { inverted?: boolean }) {
   return (
-    <Link to="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight">
-      <img src={inverted ? logoInverted : logo} alt="" className="size-8" />
-      {/* Cores da logo: "Emprega" verde, "Saquá" azul (branco sobre o rodapé azul). */}
-      <span className="hidden min-[360px]:inline">
-        <span className="text-green">Emprega</span>
-        <span className={inverted ? 'text-white' : 'text-primary'}>Saquá</span>
-      </span>
+    <Link to="/" className="flex items-center">
+      {/* Logo tem fundo branco embutido (sem transparência): sobre o rodapé azul ela vai dentro de um chip branco. */}
+      <img
+        src={logoFull}
+        alt="EmpregaSaquá"
+        className={cx('h-10 w-auto object-contain sm:h-11', inverted && 'rounded-lg bg-white p-1.5')}
+      />
     </Link>
   );
 }

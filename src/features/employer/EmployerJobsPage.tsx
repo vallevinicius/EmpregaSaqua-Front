@@ -6,6 +6,7 @@ import type { Job, JobStatus } from '@/api/types';
 import { Badge, Button, ConfirmDialog, EmptyState, PageHeader, Pagination, Select, Skeleton, buttonClass } from '@/components/ui';
 import { ErrorState, SafeText, useToast } from '@/components/feedback';
 import { CONTRACT_LABEL, JOB_STATUS_LABEL, WORK_MODEL_LABEL, formatDate } from '@/lib/format';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 const STATUS_TONE: Record<JobStatus, 'neutral' | 'primary' | 'success' | 'warning' | 'danger'> = {
   PENDING: 'warning',
@@ -15,6 +16,7 @@ const STATUS_TONE: Record<JobStatus, 'neutral' | 'primary' | 'success' | 'warnin
 };
 
 export default function EmployerJobsPage() {
+  useDocumentTitle("Minhas vagas");
   const qc = useQueryClient();
   const toast = useToast();
   const [page, setPage] = useState(1);
@@ -57,7 +59,7 @@ export default function EmployerJobsPage() {
       {q.isPending ? (
         <div className="flex flex-col gap-3">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-20" />)}</div>
       ) : q.isError ? (
-        <ErrorState error={q.error} onRetry={() => void q.refetch()} pending={{ endpoint: 'GET /jobs/mine', feature: 'Listagem das suas vagas' }} />
+        <ErrorState error={q.error} onRetry={() => void q.refetch()} />
       ) : q.data.data.length === 0 ? (
         <EmptyState title="Nenhuma vaga ainda" description="Publique sua primeira vaga para começar a receber candidatos." />
       ) : (
