@@ -1,8 +1,8 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { analyticsApi, candidatesApi, jobAlertsApi, jobsApi, type JobFilters } from '@/api/endpoints';
-import type { ContractType, JobArea, WorkModel } from '@/api/types';
+import { analyticsApi, applicationsApi, candidatesApi, jobAlertsApi, jobsApi, type JobFilters } from '@/api/endpoints';
+import type { CandidateProfile, ContractType, JobArea, WorkModel } from '@/api/types';
 import { useSession } from '@/auth/useAuth';
 import { Button, EmptyState, Pagination, Skeleton, cx } from '@/components/ui';
 import { ErrorState, useToast } from '@/components/feedback';
@@ -11,6 +11,7 @@ import { CONTRACT_LABEL, JOB_AREA_LABEL, WORK_MODEL_LABEL, formatApproxCount } f
 import {
   AccessibilityIcon,
   BellIcon,
+  HeartIcon,
   CheckCircleIcon,
   FileTextIcon,
   FilterIcon,
@@ -24,6 +25,17 @@ import {
 } from '@/components/icons';
 import { JobCard } from './JobCard';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { recommendJobs } from '@/lib/recommend';
+import {
+  clearRecentSearches,
+  describeSearch,
+  normalizeSearch,
+  recordRecentSearch,
+  removeSavedSearch,
+  toggleSavedSearch,
+  useRecentSearches,
+  useSavedSearches,
+} from '@/lib/savedSearches';
 
 const WORK_MODELS = Object.keys(WORK_MODEL_LABEL) as WorkModel[];
 const CONTRACTS = Object.keys(CONTRACT_LABEL) as ContractType[];
@@ -74,6 +86,12 @@ export function JobsListPage() {
     queryFn: ({ signal }) => jobsApi.list(filters, signal),
     placeholderData: keepPreviousData,
   });
+
+  // Toda busca com filtro vira "recente" (só neste navegador). A chave ignora página e parâmetros desconhecidos.
+  const searchKey = normalizeSearch(sp);
+  useEffect(() => {
+    if (searchKey) recordRecentSearch(searchKey);
+  }, [searchKey]);
 
   const update = (patch: Record<string, string | undefined>, resetPage = true) => {
     const next = new URLSearchParams(sp);
@@ -198,6 +216,7 @@ export function JobsListPage() {
 
       {/* ---------- Resultados ---------- */}
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+        {landing && session?.user.role === 'JOB_SEEKER' && candidateMe.data && <RecommendedJobs profile={candidateMe.data} />}
         <div className="grid gap-8 lg:grid-cols-[17rem_1fr]">
           <aside aria-label="Filtros" className="lg:sticky lg:top-24 lg:self-start">
             <details className="group border-y border-border lg:border-0" open>
@@ -269,6 +288,7 @@ export function JobsListPage() {
           </aside>
 
           <section aria-live="polite" aria-busy={query.isFetching} className="min-w-0">
+            <SearchShortcuts current={searchKey} />
             <div className="mb-5 flex flex-wrap items-center gap-3">
               <h2 className="text-xl font-extrabold tracking-tight">
                 {total === undefined ? 'Vagas' : `${total.toLocaleString('pt-BR')} ${total === 1 ? 'vaga encontrada' : 'vagas encontradas'}`}
@@ -290,7 +310,12 @@ export function JobsListPage() {
                   ))}
                 </ul>
               )}
-              {hasFilters && <JobAlertButton filters={filters} className="ml-auto" />}
+              {hasFilters && (
+                <div className="ml-auto flex flex-wrap items-center gap-2">
+                  <SaveSearchButton qs={searchKey} />
+                  <JobAlertButton filters={filters} />
+                </div>
+              )}
             </div>
 
             {query.isPending ? (
@@ -326,6 +351,112 @@ export function JobsListPage() {
       {landing && <HowItWorks />}
       {landing && <EmployerCta />}
     </div>
+  );
+}
+
+/** Salva (ou remove) a busca atual para reabrir depois com um clique. Vale para qualquer visitante, fica no navegador. */
+function SaveSearchButton({ qs }: { qs: string }) {
+  const saved = useSavedSearches();
+  const toast = useToast();
+  if (!qs) return null;
+  const isSaved = saved.some((s) => s.qs === qs);
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      aria-pressed={isSaved}
+      onClick={() => {
+        const nowSaved = toggleSavedSearch(qs);
+        toast(nowSaved ? 'Busca salva neste navegador.' : 'Busca removida das salvas.');
+      }}
+    >
+      <HeartIcon size={16} filled={isSaved} className={isSaved ? 'text-primary' : undefined} /> {isSaved ? 'Busca salva' : 'Salvar busca'}
+    </Button>
+  );
+}
+
+/** Atalhos: buscas salvas (com remover) e as últimas buscas feitas. Some quando não há nada para mostrar. */
+function SearchShortcuts({ current }: { current: string }) {
+  const saved = useSavedSearches();
+  const recent = useRecentSearches();
+  const savedKeys = new Set(saved.map((s) => s.qs));
+  const recents = recent.filter((r) => !savedKeys.has(r.qs) && r.qs !== current);
+  if (!saved.length && !recents.length) return null;
+  return (
+    <div className="mb-5 flex flex-col gap-3 rounded-2xl bg-surface-2 p-4">
+      {saved.length > 0 && (
+        <div>
+          <h3 className="mb-2 text-sm font-bold">Suas buscas salvas</h3>
+          <ul className="flex flex-wrap gap-2">
+            {saved.map((s) => (
+              <li key={s.qs} className="inline-flex items-center overflow-hidden rounded-full border border-border bg-surface text-sm">
+                <Link to={`/?${s.qs}`} className={cx('py-1 pl-3 pr-2 font-semibold hover:text-primary', s.qs === current && 'text-primary')}>
+                  {describeSearch(s.qs)}
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => removeSavedSearch(s.qs)}
+                  aria-label={`Remover busca salva ${describeSearch(s.qs)}`}
+                  className="px-2 py-1 text-muted hover:text-danger"
+                >
+                  <XIcon size={13} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {recents.length > 0 && (
+        <div>
+          <div className="mb-2 flex items-center gap-3">
+            <h3 className="text-sm font-bold">Buscas recentes</h3>
+            <button type="button" onClick={clearRecentSearches} className="text-xs font-semibold text-muted hover:text-primary">Limpar</button>
+          </div>
+          <ul className="flex flex-wrap gap-2">
+            {recents.map((r) => (
+              <li key={r.qs}>
+                <Link to={`/?${r.qs}`} className="inline-block rounded-full border border-border bg-surface px-3 py-1 text-sm text-muted hover:border-primary hover:text-primary">
+                  {describeSearch(r.qs)}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Vagas sugeridas a partir do currículo (área, cargo de interesse, habilidades). A pontuação roda aqui no navegador
+ * sobre as vagas mais recentes; vagas em que a pessoa já se candidatou e de outra área ficam de fora.
+ */
+function RecommendedJobs({ profile }: { profile: CandidateProfile }) {
+  const apps = useQuery({ queryKey: ['applications', 'mine'], queryFn: ({ signal }) => applicationsApi.mine(signal), staleTime: 60_000, retry: false });
+  const pool = useQuery({ queryKey: ['jobs', 'recommend-pool'], queryFn: ({ signal }) => jobsApi.list({ page: 1, limit: 30 }, signal), staleTime: 5 * 60_000, retry: false });
+  const recs = useMemo(
+    () => recommendJobs(pool.data?.data ?? [], profile, { limit: 5, excludeIds: new Set((apps.data ?? []).map((a) => a.job_id)) }),
+    [pool.data, profile, apps.data],
+  );
+  if (!recs.length) return null;
+  return (
+    <section aria-label="Vagas recomendadas" className="mb-10">
+      <h2 className="text-xl font-extrabold tracking-tight">Recomendadas para você</h2>
+      <p className="mb-4 mt-1 text-sm text-muted">Com base na sua área, no cargo que você procura e nas suas habilidades.</p>
+      <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
+        {recs.map((r) => (
+          <li key={r.job.id}>
+            <JobCard job={r.job} candidateArea={profile.area} />
+            <ul className="-mt-2 flex flex-wrap gap-2 px-5 pb-4 sm:px-6">
+              {r.reasons.map((reason) => (
+                <li key={reason} className="rounded-full bg-primary-soft px-2.5 py-0.5 text-xs font-semibold text-primary">{reason}</li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

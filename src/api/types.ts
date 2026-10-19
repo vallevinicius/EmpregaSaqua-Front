@@ -171,6 +171,8 @@ export interface CandidateProfile {
   genero?: string | null;
   cargo_interesse?: string | null;
   is_pcd: boolean;
+  /** Visibilidade para empresas ("aberto a oportunidades"). Depende do back expor o campo — ver `open_to_work` em endpoints.ts. */
+  open_to_work?: boolean;
   escolaridade?: Escolaridade | null;
   created_at: string;
   updated_at: string;

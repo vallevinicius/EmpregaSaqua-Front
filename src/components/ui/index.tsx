@@ -3,13 +3,14 @@ import {
   useEffect,
   useId,
   useRef,
+  useState,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react';
-import { ChevronLeftIcon, ChevronRightIcon, InboxIcon } from '../icons';
+import { ChevronLeftIcon, ChevronRightIcon, EyeIcon, EyeOffIcon, InboxIcon } from '../icons';
 
 export function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ');
@@ -148,6 +149,27 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
       >
         {children}
       </select>
+    );
+  },
+);
+
+/** Campo de senha com botão para mostrar/ocultar o que foi digitado. Começa oculto. */
+export const PasswordInput = forwardRef<HTMLInputElement, Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & { invalid?: boolean }>(
+  function PasswordInput({ className, ...rest }, ref) {
+    const [visible, setVisible] = useState(false);
+    return (
+      <div className="relative">
+        <Input ref={ref} type={visible ? 'text' : 'password'} className={cx('pr-11', className)} {...rest} />
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          aria-label={visible ? 'Ocultar senha' : 'Mostrar senha'}
+          aria-pressed={visible}
+          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-[inherit] text-muted hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          {visible ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+        </button>
+      </div>
     );
   },
 );

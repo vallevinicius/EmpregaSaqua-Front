@@ -210,6 +210,8 @@ export interface CandidateProfileInput {
   genero?: string;
   cargo_interesse?: string;
   is_pcd?: boolean;
+  /** @pending campo novo no back (PATCH /candidates/profile). Só é enviado quando a pessoa mexe no interruptor; se o back ainda não aceitar, a tela mostra o erro da API. */
+  open_to_work?: boolean;
   escolaridade?: Escolaridade;
   experiences?: Omit<Experience, 'id'>[];
   educations?: Omit<Education, 'id'>[];

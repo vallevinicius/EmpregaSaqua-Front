@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { authApi } from '@/api/endpoints';
 import { useAuthActions } from '@/auth/useAuth';
 import { homeFor, safeRedirect } from '@/auth/guards';
-import { Alert, Button, Field, Input } from '@/components/ui';
+import { Alert, Button, Field, Input, PasswordInput } from '@/components/ui';
 import { ApiErrorAlert, useToast } from '@/components/feedback';
 import { ApiError, errorMessage } from '@/lib/http';
 import { AuthShell } from './AuthShell';
@@ -68,7 +68,7 @@ export default function LoginPage() {
         </Field>
         <Field label="Senha" error={form.formState.errors.password?.message} required>
           {({ id, describedBy, invalid }) => (
-            <Input id={id} type="password" autoComplete="current-password" aria-describedby={describedBy} invalid={invalid} {...form.register('password')} />
+            <PasswordInput id={id} autoComplete="current-password" aria-describedby={describedBy} invalid={invalid} {...form.register('password')} />
           )}
         </Field>
         <div className="-mt-2 text-right text-sm">

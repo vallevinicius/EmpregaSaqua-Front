@@ -15,6 +15,8 @@ import {
   Clock,
   CreditCard,
   EnvelopeSimple,
+  Eye,
+  EyeSlash,
   FileText,
   Funnel,
   GraduationCap,
@@ -108,3 +110,5 @@ export const CameraIcon = wrap(Camera);
 export const TranslateIcon = wrap(Translate);
 export const ShareIcon = wrap(ShareNetwork);
 export const LockIcon = wrap(Lock);
+export const EyeIcon = wrap(Eye);
+export const EyeOffIcon = wrap(EyeSlash);

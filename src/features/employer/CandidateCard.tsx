@@ -5,7 +5,7 @@ import { talentPoolApi } from '@/api/endpoints';
 import type { CandidateProfile } from '@/api/types';
 import { useSession } from '@/auth/useAuth';
 import { chatLink } from '@/features/chat/chatLink';
-import { Button, ConfirmDialog, Textarea } from '@/components/ui';
+import { Badge, Button, ConfirmDialog, Textarea } from '@/components/ui';
 import { SafeParagraphs, SafeText, useToast } from '@/components/feedback';
 import { MessageIcon } from '@/components/icons';
 import { ApiError } from '@/lib/http';
@@ -25,6 +25,7 @@ export function CandidateSummary({ email, profile, extra, actions }: { email?: s
             {profile?.full_name ? <SafeText>{profile.full_name}</SafeText> : (email ?? 'Candidato')}
           </p>
           {profile?.full_name && email && <p className="truncate text-sm text-muted">{email}</p>}
+          {profile?.open_to_work && <p className="mt-1"><Badge tone="green">Aberto a oportunidades</Badge></p>}
           {profile?.address && <p className="text-sm text-muted"><SafeText>{profile.address}</SafeText></p>}
           {skills.length > 0 && (
             <ul className="mt-2 flex flex-wrap gap-1.5">
