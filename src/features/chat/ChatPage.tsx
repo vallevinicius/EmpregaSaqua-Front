@@ -10,7 +10,7 @@ import { formatTime, relativeDate } from '@/lib/format';
 import { errorMessage } from '@/lib/http';
 import { safeAssetUrl } from '@/lib/safe';
 import { FileTextIcon, ImageSquareIcon, PaperclipIcon, PencilSimpleIcon, TrashIcon, XIcon } from '@/components/icons';
-import { chatLink, parseChatTarget, type ChatTarget } from './chatLink';
+import { chatLink, parseChatDraft, parseChatTarget, type ChatTarget } from './chatLink';
 import { useChatSocket, type Attachment } from './useChatSocket';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
@@ -28,6 +28,7 @@ export default function ChatPage() {
   const qc = useQueryClient();
   const [sp, setSp] = useSearchParams();
   const target = parseChatTarget(sp);
+  const initialDraft = parseChatDraft(sp);
   const [roomId, setRoomId] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [live, setLive] = useState<ChatMessage[]>([]);
@@ -169,6 +170,7 @@ export default function ChatPage() {
               historyLoading={history.isPending}
               socket={socket}
               target={target}
+              initialDraft={initialDraft}
               otherTyping={otherTyping}
               otherRead={otherRead}
               onSent={() => setOtherRead(false)}
@@ -204,6 +206,7 @@ function Conversation({
   historyPending,
   historyLoading,
   socket,
+  initialDraft,
   otherTyping,
   otherRead,
   onSent,
@@ -218,6 +221,7 @@ function Conversation({
   historyLoading: boolean;
   socket: ReturnType<typeof useChatSocket>;
   target: ChatTarget;
+  initialDraft: string;
   otherTyping: boolean;
   otherRead: boolean;
   onSent: () => void;
@@ -225,7 +229,7 @@ function Conversation({
   loadingOlder: boolean;
   onLoadOlder: () => void;
 }) {
-  const [text, setText] = useState('');
+  const [text, setText] = useState(initialDraft);
   const [sending, setSending] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [attachment, setAttachment] = useState<Attachment | null>(null);

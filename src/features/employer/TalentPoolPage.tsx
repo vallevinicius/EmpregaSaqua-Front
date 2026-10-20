@@ -6,6 +6,7 @@ import { Button, ConfirmDialog, EmptyState, PageHeader, Pagination, Skeleton } f
 import { ErrorState, SafeText, useToast } from '@/components/feedback';
 import { formatDate } from '@/lib/format';
 import { CandidateSummary, MessageCandidateButton } from './CandidateCard';
+import { InviteToJobButton } from './InviteDialogs';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 export default function TalentPoolPage() {
@@ -57,6 +58,7 @@ export default function TalentPoolPage() {
                   actions={
                     <>
                       <MessageCandidateButton candidateId={s.candidate_id} />
+                      <InviteToJobButton candidateId={s.candidate_id} />
                       <Button size="sm" variant="danger-ghost" onClick={() => setToRemove(s)}>Remover</Button>
                     </>
                   }

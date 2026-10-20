@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,6 +12,7 @@ import { ApiErrorAlert, ErrorState, SafeText, useToast } from '@/components/feed
 import { CepLookup, StringListInput, cepToAddress } from '@/components/inputs';
 import { CONTRACT_LABEL, ESCOLARIDADE_LABEL, IDIOMA_LABEL, JOB_AREA_LABEL, NIVEL_IDIOMA_LABEL, WORK_MODEL_LABEL } from '@/lib/format';
 import { decodeEntities, onlyDigits } from '@/lib/safe';
+import { UUID_RE } from '@/features/admin/uuid';
 import { maskCurrencyInput } from '@/lib/currency';
 import { ApiError } from '@/lib/http';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
@@ -207,6 +208,12 @@ export default function JobFormPage() {
   const [verificationBlocked, setVerificationBlocked] = useState(false);
 
   const existing = useQuery({ queryKey: ['jobs', 'detail', id], queryFn: ({ signal }) => jobsApi.get(id!, signal), enabled: isEdit });
+  // `?copiar=<id>`: nova vaga começando pelos dados de uma vaga da própria empresa.
+  const [sp] = useSearchParams();
+  const copyParam = sp.get('copiar') ?? '';
+  const copyId = !isEdit && UUID_RE.test(copyParam) ? copyParam : '';
+  const source = useQuery({ queryKey: ['jobs', 'detail', copyId], queryFn: ({ signal }) => jobsApi.get(copyId, signal), enabled: !!copyId, retry: false });
+  const copySource = source.data && source.data.employer_id === session?.user.id ? source.data : null;
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: EMPTY });
   const questions = useFieldArray({ control: form.control, name: 'questions' });
   const languageRequirements = useFieldArray({ control: form.control, name: 'language_requirements' });
@@ -217,6 +224,11 @@ export default function JobFormPage() {
   useEffect(() => {
     if (existing.data) form.reset(toValues(existing.data));
   }, [existing.data, form]);
+
+  useEffect(() => {
+    // Cópia: o prazo e as perguntas de triagem NÃO vêm junto (o gabarito não chega ao front e o prazo antigo já passou).
+    if (copySource) form.reset({ ...toValues(copySource), expires_at: '', replace_questions: true, questions: [] });
+  }, [copySource, form]);
 
   const save = useMutation({
     mutationFn: (v: Values) => (isEdit ? jobsApi.update(id!, toInput(v, true)) : jobsApi.create(toInput(v, false))),
@@ -246,8 +258,15 @@ export default function JobFormPage() {
           </Alert>
         </div>
       )}
+      {copySource && (
+        <div className="mb-4">
+          <Alert tone="primary" title="Nova vaga a partir de uma cópia">
+            Os dados de “{decodeEntities(copySource.title)}” foram copiados. O prazo de inscrição e as perguntas de triagem não vêm junto — defina de novo se precisar.
+          </Alert>
+        </div>
+      )}
       <form noValidate className="flex flex-col gap-6" onSubmit={form.handleSubmit((v) => save.mutate(v))}>
-        {!isEdit && (
+        {!isEdit && !copySource && (
           <Card>
             <h2 className="font-semibold">Comece com um modelo</h2>
             <p className="mt-1 text-sm text-muted">Preenche o título, a descrição, a jornada e os requisitos. Você edita o que quiser depois.</p>

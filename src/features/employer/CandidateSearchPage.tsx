@@ -4,6 +4,7 @@ import { candidatesApi } from '@/api/endpoints';
 import { Button, EmptyState, Input, PageHeader, Pagination, Skeleton } from '@/components/ui';
 import { ErrorState } from '@/components/feedback';
 import { CandidateSummary, MessageCandidateButton, SaveToPoolButton } from './CandidateCard';
+import { InviteToJobButton } from './InviteDialogs';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 interface Filters {
@@ -63,6 +64,7 @@ export default function CandidateSearchPage() {
                   actions={
                     <>
                       <MessageCandidateButton candidateId={c.user_id} />
+                      <InviteToJobButton candidateId={c.user_id} />
                       <SaveToPoolButton candidateId={c.user_id} />
                     </>
                   }

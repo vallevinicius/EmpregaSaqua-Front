@@ -106,6 +106,16 @@ export interface JobQuestion {
   options: QuestionOption[];
 }
 
+/** Página pública da empresa (GET /companies/:id). Só empresas aprovadas; sem CNPJ, telefone nem documentos. */
+export interface PublicCompany {
+  /** Mesmo valor do `employer_id` das vagas. */
+  id: string;
+  nome_fantasia: string;
+  logo_url: string | null;
+  endereco: string | null;
+  active_jobs_count: number;
+}
+
 export interface Job {
   id: string;
   employer_id: string;

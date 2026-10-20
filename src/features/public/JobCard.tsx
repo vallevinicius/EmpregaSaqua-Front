@@ -57,7 +57,9 @@ export function JobCard({ job, candidateArea }: { job: Job; candidateArea?: JobA
           )}
         </h2>
         <p className="mt-0.5 truncate text-muted">
-          <SafeText>{company}</SafeText>
+          <Link to={`/empresas/${encodeURIComponent(job.employer_id)}`} className="relative z-10 hover:text-primary hover:underline">
+            <SafeText>{company}</SafeText>
+          </Link>
         </p>
         <ul className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
           <li className="inline-flex min-w-0 items-center gap-1.5">

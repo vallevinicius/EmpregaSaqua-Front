@@ -76,7 +76,9 @@ export default function JobDetailPage() {
             <CompanyLogo name={company} url={job.employer?.company_profile?.logo_url} size={72} />
             <div className="min-w-0">
               <p className="font-semibold text-primary">
-                <SafeText>{company}</SafeText>
+                <Link to={`/empresas/${encodeURIComponent(job.employer_id)}`} className="hover:underline">
+                  <SafeText>{company}</SafeText>
+                </Link>
               </p>
               <h1 className="mt-1 text-3xl font-extrabold tracking-tight sm:text-4xl">
                 <SafeText>{job.title}</SafeText>
