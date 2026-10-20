@@ -1,5 +1,5 @@
 import { request, seg } from '@/lib/http';
-import type {
+import type { PublicCompany,
   AdminAnalytics,
   AdminCompany,
   AdminUser,
@@ -123,6 +123,8 @@ export interface JobFilters {
   contract_type?: ContractType | '';
   is_pcd?: boolean;
   area?: JobArea | '';
+  /** Só vagas de uma empresa (UUID do empregador). */
+  employer_id?: string;
 }
 
 export interface JobInput {
@@ -278,6 +280,13 @@ export const talentPoolApi = {
   save: (candidate_id: string, notes?: string) =>
     request<SavedCandidate>('/talent-pool', { method: 'POST', body: { candidate_id, notes: notes || undefined } }),
   remove: (id: string) => request<void>(`/talent-pool/${seg(id)}`, { method: 'DELETE' }),
+};
+
+// ---------- Empresas (público) ----------
+
+export const companiesApi = {
+  get: (employerId: string, signal?: AbortSignal) =>
+    request<PublicCompany>(`/companies/${seg(employerId)}`, { auth: false, signal }),
 };
 
 // ---------- Job alerts ----------

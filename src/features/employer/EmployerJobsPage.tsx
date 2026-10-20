@@ -6,6 +6,7 @@ import type { Job, JobStatus } from '@/api/types';
 import { Badge, Button, ConfirmDialog, EmptyState, PageHeader, Pagination, Select, Skeleton, buttonClass } from '@/components/ui';
 import { ErrorState, SafeText, useToast } from '@/components/feedback';
 import { CONTRACT_LABEL, JOB_STATUS_LABEL, WORK_MODEL_LABEL, formatDate } from '@/lib/format';
+import { RENEW_DAYS, expiryState, renewedExpiry } from '@/lib/jobExpiry';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 const STATUS_TONE: Record<JobStatus, 'neutral' | 'primary' | 'success' | 'warning' | 'danger'> = {
@@ -22,6 +23,7 @@ export default function EmployerJobsPage() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<JobStatus | ''>('');
   const [toDelete, setToDelete] = useState<Job | null>(null);
+  const [toRenew, setToRenew] = useState<Job | null>(null);
 
   const q = useQuery({
     queryKey: ['jobs', 'mine', { page, status }],
@@ -37,6 +39,16 @@ export default function EmployerJobsPage() {
       toast('Vaga removida.');
       void qc.invalidateQueries({ queryKey: ['jobs'] });
       void qc.invalidateQueries({ queryKey: ['analytics', 'employer'] });
+    },
+    onError: (e) => toast(e.message, 'danger'),
+  });
+
+  const renew = useMutation({
+    mutationFn: (id: string) => jobsApi.update(id, { expires_at: renewedExpiry() }),
+    onSuccess: () => {
+      setToRenew(null);
+      toast('Prazo renovado.');
+      void qc.invalidateQueries({ queryKey: ['jobs'] });
     },
     onError: (e) => toast(e.message, 'danger'),
   });
@@ -72,11 +84,16 @@ export default function EmployerJobsPage() {
                   <p className="text-sm text-muted">
                     {WORK_MODEL_LABEL[job.work_model]} · {CONTRACT_LABEL[job.contract_type]} · criada em {formatDate(job.created_at)}
                   </p>
+                  <ExpiryNote expiresAt={job.expires_at} />
                 </div>
                 <Badge tone={STATUS_TONE[job.status]}>{JOB_STATUS_LABEL[job.status]}</Badge>
                 <div className="flex flex-wrap gap-2">
                   <Link to={`/empresa/vagas/${encodeURIComponent(job.id)}/candidatos`} className={buttonClass('secondary', 'sm')}>Candidatos</Link>
                   <Link to={`/empresa/vagas/${encodeURIComponent(job.id)}/editar`} className={buttonClass('secondary', 'sm')}>Editar</Link>
+                  <Link to={`/empresa/vagas/nova?copiar=${encodeURIComponent(job.id)}`} className={buttonClass('secondary', 'sm')}>Duplicar</Link>
+                  {job.expires_at && expiryState(job.expires_at).state !== 'ok' && (
+                    <Button size="sm" variant="secondary" onClick={() => setToRenew(job)}>Renovar prazo</Button>
+                  )}
                   <Button size="sm" variant="danger-ghost" onClick={() => setToDelete(job)}>Remover</Button>
                 </div>
               </li>
@@ -86,6 +103,16 @@ export default function EmployerJobsPage() {
         </>
       )}
 
+      <ConfirmDialog
+        open={!!toRenew}
+        title="Renovar prazo da vaga?"
+        description={`O novo prazo de inscrição será de ${RENEW_DAYS} dias a partir de hoje. Vagas já publicadas podem passar por uma nova análise antes de voltar ao ar.`}
+        confirmLabel="Renovar"
+        tone="primary"
+        loading={renew.isPending}
+        onConfirm={() => toRenew && renew.mutate(toRenew.id)}
+        onClose={() => setToRenew(null)}
+      />
       <ConfirmDialog
         open={!!toDelete}
         title="Remover vaga?"
@@ -97,4 +124,12 @@ export default function EmployerJobsPage() {
       />
     </div>
   );
+}
+
+/** Aviso de prazo na lista: só aparece quando falta pouco ou já venceu. */
+function ExpiryNote({ expiresAt }: { expiresAt: string | null | undefined }) {
+  const { state, daysLeft } = expiryState(expiresAt);
+  if (state === 'expired') return <p className="text-sm font-semibold text-danger">Inscrições encerradas em {formatDate(expiresAt as string)}</p>;
+  if (state === 'soon') return <p className="text-sm font-semibold text-warning">Inscrições terminam {daysLeft <= 1 ? 'em menos de 1 dia' : `em ${daysLeft} dias`}</p>;
+  return null;
 }

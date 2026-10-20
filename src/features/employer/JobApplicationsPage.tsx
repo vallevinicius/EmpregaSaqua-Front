@@ -10,6 +10,7 @@ import { APPLICATION_STATUS_LABEL, formatDate } from '@/lib/format';
 import { decodeEntities, safeHttpUrl } from '@/lib/safe';
 import { chatLink } from '@/features/chat/chatLink';
 import { CandidateSummary, SaveToPoolButton } from './CandidateCard';
+import { ScheduleInterviewButton } from './InviteDialogs';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 const STATUSES = Object.keys(APPLICATION_STATUS_LABEL) as ApplicationStatus[];
@@ -121,6 +122,15 @@ export default function JobApplicationsPage() {
                         <Button size="sm" variant="secondary" onClick={() => navigate(chatLink({ jobId: id, employerId: session.user.id, candidateId: a.applicant_id }))}>
                           Mensagem
                         </Button>
+                      )}
+                      {job.data && (
+                        <ScheduleInterviewButton
+                          jobId={id}
+                          jobTitle={job.data.title}
+                          candidateId={a.applicant_id}
+                          alreadyInterview={a.status === 'INTERVIEW' || a.status === 'HIRED'}
+                          onMarkInterview={() => updateStatus.mutate({ appId: a.id, status: 'INTERVIEW' })}
+                        />
                       )}
                       <SaveToPoolButton candidateId={a.applicant_id} />
                     </>

@@ -32,6 +32,7 @@ const ChatPage = lazy(() => import('@/features/chat/ChatPage'));
 const NotFoundPage = lazy(() => import('@/features/public/NotFoundPage'));
 const ConfirmAccountDeletionPage = lazy(() => import('@/features/public/ConfirmAccountDeletionPage'));
 const VerifyEmailPage = lazy(() => import('@/features/auth/VerifyEmailPage'));
+const CompanyPublicPage = lazy(() => import('@/features/public/CompanyPublicPage'));
 
 export function App() {
   return (
@@ -40,6 +41,7 @@ export function App() {
         <Route element={<AppLayout />}>
           <Route index element={<JobsListPage />} />
           <Route path="vagas/:id" element={<JobDetailPage />} />
+          <Route path="empresas/:id" element={<CompanyPublicPage />} />
           <Route path="vagas-salvas" element={<SavedJobsPage />} />
           <Route path="curriculo" element={<RequireAuth><ResumeBuilderPage /></RequireAuth>} />
           <Route path="entrar" element={<RedirectIfAuthed><LoginPage /></RedirectIfAuthed>} />
