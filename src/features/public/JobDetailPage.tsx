@@ -109,7 +109,10 @@ export default function JobDetailPage() {
       <Container className="grid gap-8 py-10 lg:grid-cols-[1fr_23rem]">
         <article className="flex min-w-0 flex-col gap-6">
           <dl className="grid gap-5 rounded-2xl bg-surface-2 p-6 sm:grid-cols-2">
-            <Info icon={<MapPinIcon />} label="Local"><SafeText>{job.address}</SafeText></Info>
+            <Info icon={<MapPinIcon />} label="Local">
+              {job.bairro && <span className="block"><SafeText>{job.bairro}</SafeText> · Saquarema</span>}
+              <SafeText>{job.address}</SafeText>
+            </Info>
             <Info icon={<ClockIcon />} label="Jornada"><SafeText>{job.work_schedule}</SafeText></Info>
             <Info icon={<WalletIcon />} label="Salário">{job.is_salary_visible && job.salary_range ? <SafeText>{job.salary_range}</SafeText> : 'A combinar'}</Info>
             <Info icon={<CalendarIcon />} label="Inscrições até">{job.expires_at ? formatDate(job.expires_at) : 'Sem prazo'}</Info>

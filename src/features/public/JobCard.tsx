@@ -64,7 +64,7 @@ export function JobCard({ job, candidateArea }: { job: Job; candidateArea?: JobA
         <ul className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
           <li className="inline-flex min-w-0 items-center gap-1.5">
             <MapPinIcon size={15} className="shrink-0" />
-            <SafeText className="truncate">{job.address}</SafeText>
+            <SafeText className="truncate">{job.bairro ? `${job.bairro} · ${job.address}` : job.address}</SafeText>
           </li>
           <li className="inline-flex items-center gap-1.5">
             <MonitorIcon size={15} />

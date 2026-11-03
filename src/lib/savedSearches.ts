@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { CONTRACT_LABEL, JOB_AREA_LABEL, WORK_MODEL_LABEL } from '@/lib/format';
+import { isBairro } from '@/lib/bairros';
 
 /**
  * Buscas salvas e recentes: só neste navegador (localStorage), sem depender do back.
@@ -26,13 +27,13 @@ export function normalizeSearch(input: URLSearchParams | string): string {
   const sp = typeof input === 'string' ? new URLSearchParams(input) : input;
   const out = new URLSearchParams();
   const q = (sp.get('q') ?? '').trim().slice(0, 100);
-  const local = (sp.get('local') ?? '').trim().slice(0, 100);
+  const bairro = sp.get('bairro') ?? '';
   const modelo = sp.get('modelo') ?? '';
   const contrato = sp.get('contrato') ?? '';
   const area = sp.get('area') ?? '';
   if (area && AREAS.includes(area)) out.set('area', area);
   if (contrato && CONTRACTS.includes(contrato)) out.set('contrato', contrato);
-  if (local) out.set('local', local);
+  if (isBairro(bairro)) out.set('bairro', bairro);
   if (modelo && MODELS.includes(modelo)) out.set('modelo', modelo);
   if (sp.get('pcd') === '1') out.set('pcd', '1');
   if (q) out.set('q', q);
@@ -44,7 +45,7 @@ export function describeSearch(qs: string): string {
   const sp = new URLSearchParams(qs);
   const parts = [
     sp.get('q') && `“${sp.get('q')}”`,
-    sp.get('local'),
+    sp.get('bairro'),
     WORK_MODEL_LABEL[sp.get('modelo') as keyof typeof WORK_MODEL_LABEL],
     CONTRACT_LABEL[sp.get('contrato') as keyof typeof CONTRACT_LABEL],
     sp.get('pcd') === '1' && 'PcD',

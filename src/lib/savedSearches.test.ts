@@ -21,16 +21,16 @@ beforeEach(() => {
 
 describe('normalizeSearch', () => {
   it('mantém só filtros conhecidos, em ordem fixa, sem página', () => {
-    expect(normalizeSearch('page=3&q=padaria&foo=1&local=Bacax%C3%A1')).toBe('local=Bacax%C3%A1&q=padaria');
+    expect(normalizeSearch('page=3&q=padaria&foo=1&bairro=Bacax%C3%A1')).toBe('bairro=Bacax%C3%A1&q=padaria');
   });
   it('descarta valores inválidos de modelo, contrato e área', () => {
-    expect(normalizeSearch('modelo=XXX&contrato=YYY&area=ZZZ&pcd=0')).toBe('');
+    expect(normalizeSearch('modelo=XXX&contrato=YYY&area=ZZZ&pcd=0&bairro=Copacabana')).toBe('');
   });
   it('aceita filtros válidos e corta textos longos', () => {
     expect(normalizeSearch(`modelo=REMOTE&pcd=1&q=${'a'.repeat(300)}`)).toBe(`modelo=REMOTE&pcd=1&q=${'a'.repeat(100)}`);
   });
   it('a mesma busca em ordens diferentes dá a mesma chave', () => {
-    expect(normalizeSearch('q=a&local=b')).toBe(normalizeSearch('local=b&q=a'));
+    expect(normalizeSearch('q=a&bairro=Centro')).toBe(normalizeSearch('bairro=Centro&q=a'));
   });
   it('aceita URLSearchParams e string vazia', () => {
     expect(normalizeSearch(new URLSearchParams('q=x'))).toBe('q=x');
@@ -40,7 +40,7 @@ describe('normalizeSearch', () => {
 
 describe('describeSearch', () => {
   it('monta um texto legível', () => {
-    expect(describeSearch('q=padaria&local=Centro&pcd=1')).toBe('“padaria” · Centro · PcD');
+    expect(describeSearch('q=padaria&bairro=Centro&pcd=1')).toBe('“padaria” · Centro · PcD');
   });
   it('sem filtros', () => {
     expect(describeSearch('')).toBe('Todas as vagas');
