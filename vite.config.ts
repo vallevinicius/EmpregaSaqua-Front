@@ -17,6 +17,9 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       strictPort: true,
+      // Domínios de túnel (ngrok) para mostrar o site fora da rede local. O Vite recusa Host desconhecido;
+      // o ponto inicial libera os subdomínios. Só vale em dev/preview, não afeta o build de produção.
+      allowedHosts: ['.ngrok-free.app', '.ngrok-free.dev', '.ngrok.app', '.ngrok.io'],
       proxy: {
         '/api': { target, changeOrigin: true, rewrite: (p) => p.replace(/^\/api/, '') },
         '/uploads': { target, changeOrigin: true },
