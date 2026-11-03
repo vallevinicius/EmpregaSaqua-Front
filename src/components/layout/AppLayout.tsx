@@ -242,7 +242,7 @@ function Footer({ loggedIn }: { loggedIn: boolean }) {
         <div>
           <Logo inverted />
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/80">
-            O portal de empregos de Saquarema e região. Conectamos quem quer trabalhar perto de casa às empresas da cidade.
+            O portal de empregos de Saquarema. Conectamos quem quer trabalhar perto de casa às empresas da cidade.
           </p>
         </div>
         <div className={col}>
@@ -260,7 +260,7 @@ function Footer({ loggedIn }: { loggedIn: boolean }) {
       </div>
       <div className="border-t border-white/15">
         <p className="mx-auto max-w-7xl px-4 py-5 text-xs text-white/75 sm:px-6">
-          © {new Date().getFullYear()} EmpregaSaqua. Vagas em Saquarema e região.
+          © {new Date().getFullYear()} EmpregaSaqua. Vagas em Saquarema.
         </p>
       </div>
     </footer>
