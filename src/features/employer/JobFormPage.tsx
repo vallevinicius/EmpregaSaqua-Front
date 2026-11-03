@@ -12,6 +12,7 @@ import { ApiErrorAlert, ErrorState, SafeText, useToast } from '@/components/feed
 import { CepLookup, StringListInput, cepToAddress } from '@/components/inputs';
 import { CONTRACT_LABEL, ESCOLARIDADE_LABEL, IDIOMA_LABEL, JOB_AREA_LABEL, NIVEL_IDIOMA_LABEL, WORK_MODEL_LABEL } from '@/lib/format';
 import { decodeEntities, onlyDigits } from '@/lib/safe';
+import { BAIRROS_SAQUAREMA, isBairro } from '@/lib/bairros';
 import { UUID_RE } from '@/features/admin/uuid';
 import { maskCurrencyInput } from '@/lib/currency';
 import { ApiError } from '@/lib/http';
@@ -31,6 +32,7 @@ const list = z.array(z.string().trim().min(1).max(150)).max(20);
 const schema = z.object({
   title: z.string().trim().min(3, 'Mínimo de 3 caracteres.').max(150),
   description: z.string().trim().min(20, 'Descreva a vaga com pelo menos 20 caracteres.').max(3000),
+  bairro: z.string().refine((v): boolean => isBairro(v), 'Escolha o bairro de Saquarema.'),
   address: z.string().trim().min(3, 'Informe o local.').max(150),
   work_schedule: z.string().trim().min(3, 'Informe a jornada.').max(100),
   salary_range: z.string().trim().max(100),
@@ -69,6 +71,7 @@ type Values = z.infer<typeof schema>;
 const EMPTY: Values = {
   title: '',
   description: '',
+  bairro: '',
   address: '',
   work_schedule: '',
   salary_range: '',
@@ -94,6 +97,8 @@ function toValues(job: Job): Values {
     ...EMPTY,
     title: decodeEntities(job.title),
     description: decodeEntities(job.description),
+    // Vagas antigas não têm bairro: a empresa escolhe ao editar.
+    bairro: isBairro(job.bairro) ? job.bairro : '',
     address: decodeEntities(job.address),
     work_schedule: decodeEntities(job.work_schedule),
     salary_range: decodeEntities(job.salary_range),
@@ -120,6 +125,7 @@ function toInput(v: Values, isEdit: boolean): JobInput {
   const input: JobInput = {
     title: v.title,
     description: v.description,
+    bairro: v.bairro,
     address: v.address,
     work_schedule: v.work_schedule,
     salary_range: v.salary_range || undefined,
@@ -318,7 +324,15 @@ export default function JobFormPage() {
                 </Select>
               )}
             </Field>
-            <Field label="Local de trabalho" error={errors.address?.message} required className="sm:col-span-2">
+            <Field label="Bairro" error={errors.bairro?.message} required hint="Só vagas em Saquarema.">
+              {({ id: fid, describedBy, invalid }) => (
+                <Select id={fid} aria-describedby={describedBy} invalid={invalid} {...form.register('bairro')}>
+                  <option value="" disabled>Selecione...</option>
+                  {BAIRROS_SAQUAREMA.map((b) => <option key={b} value={b}>{b}</option>)}
+                </Select>
+              )}
+            </Field>
+            <Field label="Endereço / ponto de referência" error={errors.address?.message} required>
               {({ id: fid, invalid }) => <Input id={fid} maxLength={150} invalid={invalid} {...form.register('address')} />}
             </Field>
             <CepLookup className="sm:col-span-2" onFound={(r) => form.setValue('address', cepToAddress(r).slice(0, 150), { shouldDirty: true, shouldValidate: true })} />

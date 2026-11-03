@@ -23,6 +23,7 @@ import {
   UsersIcon,
   XIcon,
 } from '@/components/icons';
+import { BAIRROS_DESTAQUE, BAIRROS_SAQUAREMA, isBairro } from '@/lib/bairros';
 import { JobCard } from './JobCard';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { recommendJobs } from '@/lib/recommend';
@@ -42,8 +43,6 @@ const CONTRACTS = Object.keys(CONTRACT_LABEL) as ContractType[];
 const AREAS = Object.keys(JOB_AREA_LABEL) as JobArea[];
 const PAGE_SIZE = 10;
 
-/** Atalhos do hero: bairros de Saquarema, aplicados no filtro de local (mesmo campo da busca). */
-const BAIRROS = ['Centro', 'Bacaxá', 'Itaúna', 'Jaconé', 'Vilatur', 'Porto da Roça'];
 
 /** Lê e VALIDA filtros da URL — valores inválidos são descartados em vez de irem para o back. */
 function readFilters(sp: URLSearchParams): Required<Pick<JobFilters, 'page'>> & JobFilters {
@@ -55,7 +54,7 @@ function readFilters(sp: URLSearchParams): Required<Pick<JobFilters, 'page'>> & 
     page,
     limit: PAGE_SIZE,
     title_like: (sp.get('q') ?? '').slice(0, 100) || undefined,
-    address: (sp.get('local') ?? '').slice(0, 100) || undefined,
+    bairro: isBairro(sp.get('bairro')) ? (sp.get('bairro') as string) : undefined,
     work_model: wm && WORK_MODELS.includes(wm) ? wm : undefined,
     contract_type: ct && CONTRACTS.includes(ct) ? ct : undefined,
     is_pcd: sp.get('pcd') === '1' ? true : undefined,
@@ -64,11 +63,11 @@ function readFilters(sp: URLSearchParams): Required<Pick<JobFilters, 'page'>> & 
 }
 
 export function JobsListPage() {
-  useDocumentTitle("Vagas em Saquarema e região", "Vagas de emprego em Saquarema-RJ e região. Busque por cargo, bairro e tipo de contrato e candidate-se grátis.");
+  useDocumentTitle("Vagas em Saquarema", "Vagas de emprego em Saquarema-RJ. Busque por cargo, bairro e tipo de contrato e candidate-se grátis.");
   const [sp, setSp] = useSearchParams();
   const filters = readFilters(sp);
   const [q, setQ] = useState(filters.title_like ?? '');
-  const [local, setLocal] = useState(filters.address ?? '');
+  const [bairro, setBairro] = useState(filters.bairro ?? '');
   const session = useSession();
   // Área do candidato logado: usada só pra avisar na lista que uma vaga é de outra área
   // (o bloqueio de verdade já acontece na candidatura — ver ApplicationsService#applyForJob).
@@ -105,22 +104,22 @@ export function JobsListPage() {
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    update({ q: q.trim() || undefined, local: local.trim() || undefined });
+    update({ q: q.trim() || undefined, bairro: bairro || undefined });
   };
 
-  const hasFilters = !!(filters.title_like || filters.address || filters.work_model || filters.contract_type || filters.is_pcd || filters.area);
+  const hasFilters = !!(filters.title_like || filters.bairro || filters.work_model || filters.contract_type || filters.is_pcd || filters.area);
   const landing = !hasFilters && filters.page === 1;
   const total = query.data?.meta.total_items;
 
   const clearAll = () => {
     setQ('');
-    setLocal('');
+    setBairro('');
     setSp(new URLSearchParams());
   };
 
   const activeChips: { label: string; clear: () => void }[] = [
     filters.title_like && { label: `“${filters.title_like}”`, clear: () => { setQ(''); update({ q: undefined }); } },
-    filters.address && { label: filters.address, clear: () => { setLocal(''); update({ local: undefined }); } },
+    filters.bairro && { label: filters.bairro, clear: () => { setBairro(''); update({ bairro: undefined }); } },
     filters.work_model && { label: WORK_MODEL_LABEL[filters.work_model], clear: () => update({ modelo: undefined }) },
     filters.contract_type && { label: CONTRACT_LABEL[filters.contract_type], clear: () => update({ contrato: undefined }) },
     filters.is_pcd && { label: 'Vagas PcD', clear: () => update({ pcd: undefined }) },
@@ -144,7 +143,7 @@ export function JobsListPage() {
             </h1>
             {landing && (
               <p className="rise mt-6 max-w-xl text-lg text-muted [animation-delay:60ms]">
-                Vagas de empresas locais em Saquarema e região. Candidate-se em poucos cliques.
+                Vagas de empresas de Saquarema. Candidate-se em poucos cliques.
               </p>
             )}
           </div>
@@ -168,14 +167,17 @@ export function JobsListPage() {
             <span className="hidden h-8 bg-border sm:block" aria-hidden />
             <label className="flex h-12 items-center gap-3 rounded-full px-4 focus-within:bg-surface-2">
               <MapPinIcon size={20} className="shrink-0 text-primary" />
-              <span className="sr-only">Bairro ou cidade</span>
-              <input
-                placeholder="Bairro ou cidade"
-                value={local}
-                maxLength={100}
-                onChange={(e) => setLocal(e.target.value)}
-                className="h-full w-full bg-transparent text-[15px] placeholder:text-muted focus:outline-none"
-              />
+              <span className="sr-only">Bairro</span>
+              <select
+                value={bairro}
+                onChange={(e) => setBairro(e.target.value)}
+                className="h-full w-full bg-transparent text-[15px] focus:outline-none"
+              >
+                <option value="">Todos os bairros</option>
+                {BAIRROS_SAQUAREMA.map((b) => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+              </select>
             </label>
             <Button type="submit" size="lg">
               <SearchIcon size={18} /> Buscar vagas
@@ -185,13 +187,13 @@ export function JobsListPage() {
           {landing && (
             <div className="rise mt-6 flex flex-wrap items-center gap-2 [animation-delay:180ms]">
               <span className="mr-1 text-sm text-muted">Vagas por bairro:</span>
-              {BAIRROS.map((b) => (
+              {BAIRROS_DESTAQUE.map((b) => (
                 <button
                   key={b}
                   type="button"
                   onClick={() => {
-                    setLocal(b);
-                    update({ local: b });
+                    setBairro(b);
+                    update({ bairro: b });
                   }}
                   className="rounded-full border border-border bg-surface px-4 py-1.5 text-sm font-medium text-fg transition-colors hover:border-primary hover:bg-primary-soft hover:text-primary"
                 >
@@ -469,7 +471,7 @@ function JobAlertButton({ filters, className }: { filters: JobFilters; className
     mutationFn: () =>
       jobAlertsApi.create({
         keyword: filters.title_like,
-        address: filters.address,
+        address: filters.bairro,
         work_model: filters.work_model || undefined,
         contract_type: filters.contract_type || undefined,
         is_pcd: filters.is_pcd,

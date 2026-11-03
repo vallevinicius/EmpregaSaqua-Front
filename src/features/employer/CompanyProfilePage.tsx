@@ -9,6 +9,7 @@ import { ApiErrorAlert, useToast } from '@/components/feedback';
 import { CepLookup, cepToAddress } from '@/components/inputs';
 import { IdentificationCardIcon, ImageSquareIcon, ShieldCheckIcon } from '@/components/icons';
 import { VERIFICATION_LABEL, formatCnpj } from '@/lib/format';
+import { isValidCnpj } from '@/lib/cnpj';
 import { IMAGE_TYPES, decodeEntities, isPdfFile, onlyDigits } from '@/lib/safe';
 import { errorMessage } from '@/lib/http';
 import { DangerZone } from '@/features/candidate/CandidateProfilePage';
@@ -22,10 +23,11 @@ const schema = z.object({
     .string()
     .trim()
     .refine((v) => v === '' || /^\d{10,13}$/.test(onlyDigits(v)), 'Telefone com DDD (10 a 13 dígitos).'),
+  // Obrigatório e válido: só empresas com CNPJ anunciam vagas. (Cadastros antigos sem CNPJ precisam preencher aqui.)
   cnpj: z
     .string()
     .trim()
-    .refine((v) => v === '' || onlyDigits(v).length === 14, 'CNPJ deve ter 14 dígitos.'),
+    .refine((v) => isValidCnpj(onlyDigits(v)), 'Informe um CNPJ válido (14 dígitos).'),
 });
 type Values = z.infer<typeof schema>;
 
@@ -93,7 +95,7 @@ export default function CompanyProfilePage() {
             </Field>
             <CepLookup className="sm:col-span-2" onFound={(r) => form.setValue('endereco', cepToAddress(r).slice(0, 200), { shouldDirty: true, shouldValidate: true })} />
 
-            <Field label="CNPJ" error={errors.cnpj?.message} hint="Opcional.">
+            <Field label="CNPJ" error={errors.cnpj?.message} hint="Obrigatório." required>
               {({ id, invalid }) => (
                 <Input
                   id={id}
