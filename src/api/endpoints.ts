@@ -83,6 +83,7 @@ export interface RegisterInput {
   role: Extract<Role, 'JOB_SEEKER' | 'EMPLOYER'>;
   /** Cria o CompanyProfile já no cadastro (role EMPLOYER). Sem isso o perfil nunca existe (ver users.service.ts#create). */
   nome_fantasia?: string;
+  /** Obrigatório para EMPLOYER (14 dígitos, com dígitos verificadores válidos). */
   cnpj?: string;
   endereco?: string;
   /** Cria o CandidateProfile já no cadastro (role JOB_SEEKER). */
@@ -94,6 +95,8 @@ export interface RegisterInput {
   data_nascimento?: string;
   /** Compartilhado entre empresa e candidato. */
   telefone?: string;
+  /** CEP (8 dígitos) de Saquarema-RJ. Obrigatório: o back recusa CEP de outra cidade. */
+  cep: string;
 }
 
 export const authApi = {
@@ -123,6 +126,8 @@ export interface JobFilters {
   contract_type?: ContractType | '';
   is_pcd?: boolean;
   area?: JobArea | '';
+  /** Só vagas de um bairro de Saquarema (nome exato da lista oficial). */
+  bairro?: string;
   /** Só vagas de uma empresa (UUID do empregador). */
   employer_id?: string;
 }
@@ -130,6 +135,8 @@ export interface JobFilters {
 export interface JobInput {
   title: string;
   description: string;
+  /** Bairro de Saquarema, nome exato da lista oficial (o back recusa qualquer outro). */
+  bairro: string;
   address: string;
   work_schedule: string;
   salary_range?: string;

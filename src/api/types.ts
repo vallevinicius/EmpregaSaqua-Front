@@ -119,6 +119,8 @@ export interface PublicCompany {
 export interface Job {
   id: string;
   employer_id: string;
+  /** Bairro de Saquarema (lista oficial). Ausente em vagas antigas, de antes da regra. */
+  bairro?: string | null;
   title: string;
   description: string;
   address: string;
