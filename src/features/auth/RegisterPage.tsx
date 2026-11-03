@@ -1,6 +1,6 @@
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useMutation } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { useForm, type UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthActions } from '@/auth/useAuth';
@@ -11,6 +11,8 @@ import { CepLookup, cepToAddress } from '@/components/inputs';
 import { BuildingIcon, UserIcon } from '@/components/icons';
 import { formatCnpj, formatCpf } from '@/lib/format';
 import { onlyDigits } from '@/lib/safe';
+import { isValidCnpj } from '@/lib/cnpj';
+import { isSaquarema } from '@/lib/bairros';
 import { AuthShell } from './AuthShell';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
@@ -46,6 +48,8 @@ const schema = z
     // Empresa
     nome_fantasia: z.string().trim().max(150),
     cnpj: z.string().trim().refine(digitsOrEmpty(14, 14), 'CNPJ deve ter 14 dígitos.'),
+    // Preenchido pela busca de CEP, que só aceita Saquarema-RJ (o back confere de novo).
+    cep: z.string().regex(/^\d{8}$/, 'Busque o seu CEP e confirme que é de Saquarema.'),
     endereco: z.string().trim().max(200),
     // Candidato
     full_name: z.string().trim().max(150),
@@ -57,6 +61,7 @@ const schema = z
   })
   .refine((v) => v.password === v.confirm, { path: ['confirm'], message: 'As senhas não conferem.' })
   .refine((v) => v.role !== 'EMPLOYER' || v.nome_fantasia.length >= 2, { path: ['nome_fantasia'], message: 'Informe o nome da empresa.' })
+  .refine((v) => v.role !== 'EMPLOYER' || isValidCnpj(onlyDigits(v.cnpj)), { path: ['cnpj'], message: 'Informe um CNPJ válido (14 dígitos).' })
   .refine((v) => v.role !== 'JOB_SEEKER' || v.full_name.length >= 2, { path: ['full_name'], message: 'Informe seu nome completo.' });
 type Values = z.infer<typeof schema>;
 
@@ -73,6 +78,7 @@ const EMPTY: Omit<Values, 'role'> = {
   telefone: '',
   nome_fantasia: '',
   cnpj: '',
+  cep: '',
   endereco: '',
   full_name: '',
   address: '',
@@ -102,6 +108,7 @@ export default function RegisterPage() {
         password: v.password,
         role: v.role,
         telefone: v.telefone ? onlyDigits(v.telefone) : undefined,
+        cep: v.cep,
         ...(v.role === 'EMPLOYER'
           ? { nome_fantasia: v.nome_fantasia, cnpj: v.cnpj ? onlyDigits(v.cnpj) : undefined, endereco: v.endereco || undefined }
           : {
@@ -183,7 +190,7 @@ export default function RegisterPage() {
               <Field label="Nome da empresa" error={errors.nome_fantasia?.message} required>
                 {({ id, invalid }) => <Input id={id} maxLength={150} placeholder="Ex.: Mercado Bom Preço" autoComplete="organization" invalid={invalid} {...form.register('nome_fantasia')} />}
               </Field>
-              <Field label="CNPJ" error={errors.cnpj?.message} hint="Opcional. Pode ser enviado depois.">
+              <Field label="CNPJ" error={errors.cnpj?.message} hint="Obrigatório. Só empresas com CNPJ podem anunciar vagas." required>
                 {({ id, invalid }) => (
                   <Input
                     id={id}
@@ -197,7 +204,7 @@ export default function RegisterPage() {
               <Field label="Endereço" error={errors.endereco?.message} hint="Opcional.">
                 {({ id, invalid }) => <Input id={id} maxLength={200} invalid={invalid} {...form.register('endereco')} />}
               </Field>
-              <CepLookup onFound={(r) => form.setValue('endereco', cepToAddress(r).slice(0, 200), { shouldDirty: true, shouldValidate: true })} />
+              <SaquaremaCep onAddress={(a) => form.setValue('endereco', a, { shouldDirty: true, shouldValidate: true })} form={form} />
               <Field label="Telefone comercial" error={errors.telefone?.message} hint="Opcional. Com DDD. Ex.: 22999999999">
                 {({ id, invalid }) => <Input id={id} type="tel" inputMode="tel" autoComplete="tel" invalid={invalid} {...form.register('telefone')} />}
               </Field>
@@ -231,7 +238,7 @@ export default function RegisterPage() {
               <Field label="Cidade / bairro" error={errors.address?.message} hint="Opcional.">
                 {({ id, invalid }) => <Input id={id} maxLength={200} invalid={invalid} {...form.register('address')} />}
               </Field>
-              <CepLookup onFound={(r) => form.setValue('address', cepToAddress(r).slice(0, 200), { shouldDirty: true, shouldValidate: true })} />
+              <SaquaremaCep onAddress={(a) => form.setValue('address', a, { shouldDirty: true, shouldValidate: true })} form={form} />
               <Field label="Resumo profissional" error={errors.bio?.message} hint="Opcional. Você pode detalhar depois, no seu currículo.">
                 {({ id, invalid }) => <Textarea id={id} rows={3} maxLength={2000} invalid={invalid} {...form.register('bio')} />}
               </Field>
@@ -243,5 +250,35 @@ export default function RegisterPage() {
         <Button type="submit" size="lg" loading={mutation.isPending}>Criar conta</Button>
       </form>
     </AuthShell>
+  );
+}
+
+/**
+ * CEP obrigatório: o site atende só Saquarema-RJ. A busca confere a cidade na hora (o back confere de novo no cadastro)
+ * e, se for de Saquarema, também preenche o endereço.
+ */
+function SaquaremaCep({ form, onAddress }: { form: UseFormReturn<Values>; onAddress: (address: string) => void }) {
+  const cep = form.watch('cep');
+  const error = form.formState.errors.cep?.message;
+  return (
+    <Field label="CEP" error={error} hint="Obrigatório. Este site é exclusivo para Saquarema-RJ." required>
+      {() => (
+        <div className="flex flex-col gap-1.5">
+          <CepLookup
+            onFound={(r) => {
+              if (!isSaquarema(r.city, r.state)) {
+                form.setValue('cep', '', { shouldValidate: false });
+                form.setError('cep', { message: `Esse CEP é de ${r.city || 'outra cidade'}. O site atende apenas Saquarema-RJ.` });
+                return;
+              }
+              form.clearErrors('cep');
+              form.setValue('cep', r.cep.replace(/\D/g, ''), { shouldDirty: true, shouldValidate: true });
+              onAddress(cepToAddress(r).slice(0, 200));
+            }}
+          />
+          {cep && !error && <p className="text-xs font-semibold text-green-ink">CEP de Saquarema confirmado.</p>}
+        </div>
+      )}
+    </Field>
   );
 }
