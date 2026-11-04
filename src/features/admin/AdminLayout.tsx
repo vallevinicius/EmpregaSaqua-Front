@@ -7,6 +7,8 @@ const TABS: { to: string; label: string; end?: boolean }[] = [
   { to: '/admin', label: 'Painel', end: true },
   { to: '/admin/moderacao', label: 'Moderação' },
   { to: '/admin/denuncias', label: 'Denúncias' },
+  { to: '/admin/indicadores', label: 'Indicadores' },
+  { to: '/admin/eventos', label: 'Feiras e cursos' },
   { to: '/admin/vagas', label: 'Vagas' },
   { to: '/admin/empresas', label: 'Empresas' },
   { to: '/admin/usuarios', label: 'Usuários' },

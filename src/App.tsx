@@ -30,6 +30,9 @@ const AdminModerationPage = lazy(() => import('@/features/admin/AdminModerationP
 const AdminUsersPage = lazy(() => import('@/features/admin/AdminUsersPage'));
 const AdminJobsPage = lazy(() => import('@/features/admin/AdminJobsPage'));
 const AdminReportsPage = lazy(() => import('@/features/admin/AdminReportsPage'));
+const AdminIndicatorsPage = lazy(() => import('@/features/admin/AdminIndicatorsPage'));
+const AdminEventsPage = lazy(() => import('@/features/admin/AdminEventsPage'));
+const EventsPage = lazy(() => import('@/features/public/EventsPage'));
 const AdminCompaniesPage = lazy(() => import('@/features/admin/AdminCompaniesPage'));
 const ChatPage = lazy(() => import('@/features/chat/ChatPage'));
 const NotFoundPage = lazy(() => import('@/features/public/NotFoundPage'));
@@ -45,6 +48,7 @@ export function App() {
           <Route index element={<JobsListPage />} />
           <Route path="vagas/:id" element={<JobDetailPage />} />
           <Route path="ajuda" element={<HelpPage />} />
+          <Route path="eventos" element={<EventsPage />} />
           <Route path="empresas/:id" element={<CompanyPublicPage />} />
           <Route path="vagas-salvas" element={<SavedJobsPage />} />
           <Route path="curriculo" element={<RequireAuth><ResumeBuilderPage /></RequireAuth>} />
@@ -79,6 +83,8 @@ export function App() {
             <Route path="moderacao" element={<AdminModerationPage />} />
             <Route path="vagas" element={<AdminJobsPage />} />
             <Route path="denuncias" element={<AdminReportsPage />} />
+            <Route path="indicadores" element={<AdminIndicatorsPage />} />
+            <Route path="eventos" element={<AdminEventsPage />} />
             <Route path="empresas" element={<AdminCompaniesPage />} />
             <Route path="usuarios" element={<AdminUsersPage />} />
           </Route>
