@@ -28,6 +28,7 @@ const NAV: Record<Role | 'PUBLIC', NavItem[]> = {
     { to: '/', label: 'Vagas', end: true },
     { to: '/candidato/candidaturas', label: 'Minhas candidaturas' },
     { to: '/vagas-salvas', label: 'Vagas salvas' },
+    { to: '/candidato/alertas', label: 'Alertas' },
     { to: '/candidato/perfil', label: 'Meu currículo' },
     { to: '/mensagens', label: 'Mensagens' },
   ],
@@ -216,7 +217,23 @@ export function AppLayout() {
         <Outlet />
       </main>
       <Footer loggedIn={!!session} />
+      <HelpButton />
     </div>
+  );
+}
+
+/** Botão fixo de ajuda: leva ao FAQ. Some na própria página de ajuda e no chat (onde cobriria o campo de mensagem). */
+function HelpButton() {
+  const { pathname } = useLocation();
+  if (pathname === '/ajuda' || pathname.startsWith('/mensagens')) return null;
+  return (
+    <Link
+      to="/ajuda"
+      className="fixed bottom-4 right-4 z-30 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-bold text-primary-fg shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/40"
+    >
+      <span aria-hidden className="flex size-5 items-center justify-center rounded-full bg-white/25 text-xs">?</span>
+      Ajuda
+    </Link>
   );
 }
 
@@ -250,6 +267,7 @@ function Footer({ loggedIn }: { loggedIn: boolean }) {
           <Link to="/" className={link}>Buscar vagas</Link>
           {!loggedIn && <Link to="/cadastro" className={link}>Cadastre-se</Link>}
           <Link to="/candidato/candidaturas" className={link}>Minhas candidaturas</Link>
+          <Link to="/ajuda" className={link}>Central de ajuda</Link>
         </div>
         <div className={col}>
           <p className="mb-1 font-bold">Para empresas</p>

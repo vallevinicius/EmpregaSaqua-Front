@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthActions } from '@/auth/useAuth';
 import { homeFor } from '@/auth/guards';
-import { Button, Field, Input, PasswordInput, Textarea, cx } from '@/components/ui';
+import { Button, Field, Input, PasswordInput, cx } from '@/components/ui';
 import { ApiErrorAlert, useToast } from '@/components/feedback';
 import { CepLookup, cepToAddress } from '@/components/inputs';
 import { BuildingIcon, UserIcon } from '@/components/icons';
@@ -13,6 +13,7 @@ import { formatCnpj, formatCpf } from '@/lib/format';
 import { onlyDigits } from '@/lib/safe';
 import { isValidCnpj } from '@/lib/cnpj';
 import { isSaquarema } from '@/lib/bairros';
+import { suggestUsernameFromEmail } from '@/lib/username';
 import { AuthShell } from './AuthShell';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
@@ -54,7 +55,6 @@ const schema = z
     // Candidato
     full_name: z.string().trim().max(150),
     address: z.string().trim().max(200),
-    bio: z.string().trim().max(2000),
     cpf: z.string().trim().refine(digitsOrEmpty(11, 11), 'CPF deve ter 11 dígitos.'),
     nome_social: z.string().trim().max(150),
     data_nascimento: z.string().refine((v) => v === '' || /^\d{4}-\d{2}-\d{2}$/.test(v), 'Data inválida.'),
@@ -82,7 +82,6 @@ const EMPTY: Omit<Values, 'role'> = {
   endereco: '',
   full_name: '',
   address: '',
-  bio: '',
   cpf: '',
   nome_social: '',
   data_nascimento: '',
@@ -99,6 +98,11 @@ export default function RegisterPage() {
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { role: initialRole, ...EMPTY } });
   const role = form.watch('role');
   const errors = form.formState.errors;
+  // Usuário é exigido pelo back, mas ninguém precisa pensar nele: sugere a parte do e-mail antes do @ (editável).
+  const suggestUsername = () => {
+    if (form.getFieldState('username').isDirty || form.getValues('username')) return;
+    form.setValue('username', suggestUsernameFromEmail(form.getValues('email')), { shouldValidate: false });
+  };
 
   const mutation = useMutation({
     mutationFn: (v: Values) =>
@@ -114,7 +118,6 @@ export default function RegisterPage() {
           : {
               full_name: v.full_name,
               address: v.address || undefined,
-              bio: v.bio || undefined,
               cpf: v.cpf ? onlyDigits(v.cpf) : undefined,
               nome_social: v.nome_social || undefined,
               data_nascimento: v.data_nascimento || undefined,
@@ -171,7 +174,7 @@ export default function RegisterPage() {
         </fieldset>
 
         <Field label="E-mail" error={errors.email?.message} required>
-          {({ id, describedBy, invalid }) => <Input id={id} type="email" autoComplete="email" placeholder="voce@email.com" aria-describedby={describedBy} invalid={invalid} {...form.register('email')} />}
+          {({ id, describedBy, invalid }) => <Input id={id} type="email" autoComplete="email" placeholder="voce@email.com" aria-describedby={describedBy} invalid={invalid} {...form.register('email', { onBlur: suggestUsername })} />}
         </Field>
         <Field label="Nome de usuário" error={errors.username?.message} hint="3 a 30 caracteres: letras minúsculas, números, ponto ou underline. Usado para entrar, junto com e-mail ou CPF." required>
           {({ id, describedBy, invalid }) => <Input id={id} autoComplete="username" placeholder="joana.silva" aria-describedby={describedBy} invalid={invalid} {...form.register('username')} />}
@@ -215,33 +218,32 @@ export default function RegisterPage() {
               <Field label="Nome completo" error={errors.full_name?.message} required>
                 {({ id, invalid }) => <Input id={id} maxLength={150} placeholder="Ex.: Joana da Silva" autoComplete="name" invalid={invalid} {...form.register('full_name')} />}
               </Field>
-              <Field label="Nome social" error={errors.nome_social?.message} hint="Opcional. Se diferente do nome completo.">
-                {({ id, invalid }) => <Input id={id} maxLength={150} autoComplete="nickname" invalid={invalid} {...form.register('nome_social')} />}
-              </Field>
-              <Field label="CPF" error={errors.cpf?.message} hint="Opcional. Pode ser enviado depois.">
-                {({ id, invalid }) => (
-                  <Input
-                    id={id}
-                    inputMode="numeric"
-                    invalid={invalid}
-                    {...form.register('cpf')}
-                    onChange={(e) => form.setValue('cpf', formatCpf(e.target.value), { shouldValidate: true })}
-                  />
-                )}
-              </Field>
-              <Field label="Data de nascimento" error={errors.data_nascimento?.message} hint="Opcional.">
-                {({ id, invalid }) => <Input id={id} type="date" invalid={invalid} {...form.register('data_nascimento')} />}
-              </Field>
+              <SaquaremaCep onAddress={(a) => form.setValue('address', a, { shouldDirty: true, shouldValidate: true })} form={form} />
               <Field label="Telefone / WhatsApp" error={errors.telefone?.message} hint="Opcional. Com DDD. Ex.: 22999999999">
                 {({ id, invalid }) => <Input id={id} type="tel" inputMode="tel" autoComplete="tel" invalid={invalid} {...form.register('telefone')} />}
               </Field>
-              <Field label="Cidade / bairro" error={errors.address?.message} hint="Opcional.">
-                {({ id, invalid }) => <Input id={id} maxLength={200} invalid={invalid} {...form.register('address')} />}
-              </Field>
-              <SaquaremaCep onAddress={(a) => form.setValue('address', a, { shouldDirty: true, shouldValidate: true })} form={form} />
-              <Field label="Resumo profissional" error={errors.bio?.message} hint="Opcional. Você pode detalhar depois, no seu currículo.">
-                {({ id, invalid }) => <Textarea id={id} rows={3} maxLength={2000} invalid={invalid} {...form.register('bio')} />}
-              </Field>
+              <details className="rounded-xl border border-border px-4 py-3" open={Boolean(errors.nome_social || errors.cpf || errors.data_nascimento)}>
+                <summary className="cursor-pointer text-sm font-semibold text-primary">Mais dados (opcional, dá para preencher depois)</summary>
+                <div className="mt-4 flex flex-col gap-5">
+                  <Field label="Nome social" error={errors.nome_social?.message} hint="Se diferente do nome completo.">
+                    {({ id, invalid }) => <Input id={id} maxLength={150} autoComplete="nickname" invalid={invalid} {...form.register('nome_social')} />}
+                  </Field>
+                  <Field label="CPF" error={errors.cpf?.message}>
+                    {({ id, invalid }) => (
+                      <Input
+                        id={id}
+                        inputMode="numeric"
+                        invalid={invalid}
+                        {...form.register('cpf')}
+                        onChange={(e) => form.setValue('cpf', formatCpf(e.target.value), { shouldValidate: true })}
+                      />
+                    )}
+                  </Field>
+                  <Field label="Data de nascimento" error={errors.data_nascimento?.message}>
+                    {({ id, invalid }) => <Input id={id} type="date" invalid={invalid} {...form.register('data_nascimento')} />}
+                  </Field>
+                </div>
+              </details>
             </div>
           )}
         </div>
