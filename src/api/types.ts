@@ -311,3 +311,30 @@ export interface AdminUser {
 export interface AdminCompany extends CompanyProfile {
   user?: { id: string; email: string };
 }
+
+// ---------- Denúncias ----------
+
+export type ReportReason = 'SCAM' | 'FAKE_JOB' | 'DISCRIMINATION' | 'WRONG_INFO' | 'OTHER';
+export type ReportStatus = 'OPEN' | 'RESOLVED' | 'DISMISSED';
+
+/** Denúncia como o admin enxerga (a resposta do POST ao denunciante é só id/status/created_at). */
+export interface AdminReport {
+  id: string;
+  job_id: string;
+  reporter_id: string;
+  reason: ReportReason;
+  justification: string;
+  status: ReportStatus;
+  admin_note: string | null;
+  resolved_at: string | null;
+  created_at: string;
+  job?: {
+    id: string;
+    title: string;
+    status: JobStatus;
+    bairro: string | null;
+    employer_id: string;
+    employer?: { company_profile?: { nome_fantasia: string } | null } | null;
+  } | null;
+  reporter?: { id: string; email: string } | null;
+}
