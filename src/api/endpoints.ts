@@ -22,6 +22,9 @@ import type { PublicCompany,
   Job,
   JobAlert,
   AdminReport,
+  CityEvent,
+  EventKind,
+  Indicators,
   ReportReason,
   ReportStatus,
   JobApplication,
@@ -213,6 +216,8 @@ export const applicationsApi = {
 
 export interface CandidateProfileInput {
   full_name?: string;
+  /** Bairro de Saquarema; null limpa. */
+  bairro?: string | null;
   bio?: string;
   telefone?: string;
   address?: string;
@@ -327,16 +332,44 @@ export const analyticsApi = {
   admin: (signal?: AbortSignal) => request<AdminAnalytics>('/analytics/admin', { signal }),
   employer: (signal?: AbortSignal) => request<EmployerAnalytics>('/analytics/employer', { signal }),
   public: (signal?: AbortSignal) => request<PublicStats>('/analytics/public', { auth: false, signal }),
+  indicators: (params: { from?: string; to?: string }, signal?: AbortSignal) => request<Indicators>('/analytics/admin/indicators', { query: params, signal }),
+  /** CSV vem como arquivo (blob): a rota exige o token, então não dá para ser um link simples. */
+  indicatorsCsv: (params: { from?: string; to?: string }, signal?: AbortSignal) =>
+    request<Blob>('/analytics/admin/indicators.csv', { query: params, responseType: 'blob', timeoutMs: 30_000, signal }),
+};
+
+// ---------- Feiras e cursos ----------
+
+export interface EventInput {
+  kind: EventKind;
+  title: string;
+  description: string;
+  location: string;
+  bairro?: string | null;
+  /** ISO 8601 */
+  starts_at: string;
+  ends_at?: string | null;
+  link?: string | null;
+  published?: boolean;
+}
+
+export const eventsApi = {
+  list: (kind?: EventKind, signal?: AbortSignal) => request<CityEvent[]>('/events', { auth: false, query: { kind }, signal }),
+  adminList: (params: { page: number; limit: number }, signal?: AbortSignal) => request<Paginated<CityEvent>>('/admin/events', { query: params, signal }),
+  create: (input: EventInput) => request<CityEvent>('/admin/events', { method: 'POST', body: input }),
+  update: (id: string, input: Partial<EventInput>) => request<CityEvent>(`/admin/events/${seg(id)}`, { method: 'PATCH', body: input }),
+  remove: (id: string) => request<void>(`/admin/events/${seg(id)}`, { method: 'DELETE' }),
 };
 
 // ---------- Denúncias ----------
 
-export interface ReportInput {
-  job_id: string;
+export type ReportTarget = { job_id: string; employer_id?: never } | { employer_id: string; job_id?: never };
+
+export type ReportInput = ReportTarget & {
   reason: ReportReason;
   /** Obrigatória: 10 a 500 caracteres (o back confere de novo). */
   justification: string;
-}
+};
 
 export const reportsApi = {
   create: (input: ReportInput) => request<{ id: string; status: ReportStatus; created_at: string }>('/reports', { method: 'POST', body: input }),
@@ -347,7 +380,7 @@ export const reportsApi = {
 export const adminApi = {
   listReports: (params: { status?: ReportStatus; page: number; limit: number }, signal?: AbortSignal) =>
     request<Paginated<AdminReport>>('/admin/reports', { query: params, signal }),
-  resolveReport: (id: string, input: { status: 'RESOLVED' | 'DISMISSED'; remove_job?: boolean; admin_note?: string }) =>
+  resolveReport: (id: string, input: { status: 'RESOLVED' | 'DISMISSED'; remove_job?: boolean; suspend_company?: boolean; admin_note?: string }) =>
     request<unknown>(`/admin/reports/${seg(id)}`, { method: 'PATCH', body: input }),
 
   approveCompany: (id: string) => request<CompanyProfile>(`/admin/companies/${seg(id)}/approve`, { method: 'PATCH' }),

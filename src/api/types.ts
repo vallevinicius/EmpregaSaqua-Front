@@ -180,6 +180,7 @@ export interface CandidateProfile {
   area?: JobArea | null;
   avatar_url?: string | null;
   address: string | null;
+  bairro?: string | null;
   genero?: string | null;
   cargo_interesse?: string | null;
   is_pcd: boolean;
@@ -320,7 +321,9 @@ export type ReportStatus = 'OPEN' | 'RESOLVED' | 'DISMISSED';
 /** Denúncia como o admin enxerga (a resposta do POST ao denunciante é só id/status/created_at). */
 export interface AdminReport {
   id: string;
-  job_id: string;
+  /** Uma denúncia é de uma vaga (job_id) OU de uma empresa (employer_id). */
+  job_id: string | null;
+  employer_id: string | null;
   reporter_id: string;
   reason: ReportReason;
   justification: string;
@@ -336,5 +339,43 @@ export interface AdminReport {
     employer_id: string;
     employer?: { company_profile?: { nome_fantasia: string } | null } | null;
   } | null;
+  employer?: { id: string; company_profile?: { nome_fantasia: string; verification_status: VerificationStatus } | null } | null;
   reporter?: { id: string; email: string } | null;
+}
+
+// ---------- Indicadores (admin) ----------
+
+export interface CountRow {
+  label: string;
+  count: number;
+}
+
+export interface Indicators {
+  period: { from: string; to: string };
+  totals: { active_jobs: number; approved_companies: number; candidates: number; applications: number };
+  in_period: { new_jobs: number; new_applications: number; hires: number; new_candidates: number; new_companies: number };
+  jobs_by_bairro: CountRow[];
+  candidates_by_bairro: CountRow[];
+  jobs_by_area: CountRow[];
+  jobs_by_contract_type: CountRow[];
+  applications_by_status: CountRow[];
+  monthly: { month: string; jobs: number; applications: number; hires: number; candidates: number }[];
+}
+
+// ---------- Feiras e cursos ----------
+
+export type EventKind = 'FAIR' | 'COURSE';
+
+export interface CityEvent {
+  id: string;
+  kind: EventKind;
+  title: string;
+  description: string;
+  location: string;
+  bairro: string | null;
+  starts_at: string;
+  ends_at: string | null;
+  link: string | null;
+  published: boolean;
+  created_at: string;
 }
