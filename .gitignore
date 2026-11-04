@@ -1,9 +1,29 @@
+# Dependências e build
 node_modules
 dist
+*.tsbuildinfo
+.vite
+.eslintcache
+coverage
+
+# Variáveis de ambiente (só o exemplo sobe) e chaves
 .env
 .env.*
 !.env.example
+*.local
+*.pem
+*.key
+
+# Logs
 *.log
+npm-debug.log*
+
+# Sistema e editores
 .DS_Store
-coverage
-*.tsbuildinfo
+Thumbs.db
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# Claude Code: configurações locais da máquina
+.claude/settings.local.json
