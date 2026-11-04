@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { hasAlertCriteria } from '@/lib/alerts';
 import { analyticsApi, applicationsApi, candidatesApi, jobAlertsApi, jobsApi, type JobFilters } from '@/api/endpoints';
 import type { CandidateProfile, ContractType, JobArea, WorkModel } from '@/api/types';
 import { useSession } from '@/auth/useAuth';
@@ -484,6 +485,8 @@ function JobAlertButton({ filters, className }: { filters: JobFilters; className
   });
 
   if (session?.user.role !== 'JOB_SEEKER') return null;
+  // Sem nenhum filtro o alerta não casaria com vaga alguma (o back recusa): só aparece depois de filtrar.
+  if (!hasAlertCriteria({ keyword: filters.title_like, address: filters.bairro, work_model: filters.work_model, contract_type: filters.contract_type, is_pcd: filters.is_pcd })) return null;
 
   return (
     <Button

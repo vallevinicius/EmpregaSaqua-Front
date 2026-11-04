@@ -14,6 +14,8 @@ const RegisterPage = lazy(() => import('@/features/auth/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('@/features/auth/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('@/features/auth/ResetPasswordPage'));
 const MyApplicationsPage = lazy(() => import('@/features/candidate/MyApplicationsPage'));
+const MyAlertsPage = lazy(() => import('@/features/candidate/MyAlertsPage'));
+const HelpPage = lazy(() => import('@/features/public/HelpPage'));
 const CandidateProfilePage = lazy(() => import('@/features/candidate/CandidateProfilePage'));
 const EmployerDashboardPage = lazy(() => import('@/features/employer/EmployerDashboardPage'));
 const EmployerJobsPage = lazy(() => import('@/features/employer/EmployerJobsPage'));
@@ -42,6 +44,7 @@ export function App() {
         <Route element={<AppLayout />}>
           <Route index element={<JobsListPage />} />
           <Route path="vagas/:id" element={<JobDetailPage />} />
+          <Route path="ajuda" element={<HelpPage />} />
           <Route path="empresas/:id" element={<CompanyPublicPage />} />
           <Route path="vagas-salvas" element={<SavedJobsPage />} />
           <Route path="curriculo" element={<RequireAuth><ResumeBuilderPage /></RequireAuth>} />
@@ -56,6 +59,7 @@ export function App() {
 
           <Route path="candidato">
             <Route path="candidaturas" element={<RequireAuth roles={['JOB_SEEKER']}><MyApplicationsPage /></RequireAuth>} />
+            <Route path="alertas" element={<RequireAuth roles={['JOB_SEEKER']}><MyAlertsPage /></RequireAuth>} />
             <Route path="perfil" element={<RequireAuth roles={['JOB_SEEKER']}><CandidateProfilePage /></RequireAuth>} />
           </Route>
 
