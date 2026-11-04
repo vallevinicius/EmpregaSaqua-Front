@@ -29,6 +29,7 @@ const AdminDashboardPage = lazy(() => import('@/features/admin/AdminDashboardPag
 const AdminModerationPage = lazy(() => import('@/features/admin/AdminModerationPage'));
 const AdminUsersPage = lazy(() => import('@/features/admin/AdminUsersPage'));
 const AdminJobsPage = lazy(() => import('@/features/admin/AdminJobsPage'));
+const AdminReportsPage = lazy(() => import('@/features/admin/AdminReportsPage'));
 const AdminCompaniesPage = lazy(() => import('@/features/admin/AdminCompaniesPage'));
 const ChatPage = lazy(() => import('@/features/chat/ChatPage'));
 const NotFoundPage = lazy(() => import('@/features/public/NotFoundPage'));
@@ -77,6 +78,7 @@ export function App() {
             <Route index element={<AdminDashboardPage />} />
             <Route path="moderacao" element={<AdminModerationPage />} />
             <Route path="vagas" element={<AdminJobsPage />} />
+            <Route path="denuncias" element={<AdminReportsPage />} />
             <Route path="empresas" element={<AdminCompaniesPage />} />
             <Route path="usuarios" element={<AdminUsersPage />} />
           </Route>

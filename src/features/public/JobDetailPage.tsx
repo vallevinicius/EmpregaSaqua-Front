@@ -34,6 +34,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { ApiError } from '@/lib/http';
 import { similarJobs } from '@/lib/recommend';
 import { CompanyLogo, JobCard } from './JobCard';
+import { ReportJobButton } from './ReportJobButton';
 
 export default function JobDetailPage() {
   const { id = '' } = useParams();
@@ -169,6 +170,8 @@ export default function JobDetailPage() {
               </div>
             </Card>
           )}
+
+          {job.status === 'ACTIVE' && !isOwner && !isAdmin && <ReportJobButton job={job} loggedIn={!!session} />}
         </aside>
       </Container>
     </div>

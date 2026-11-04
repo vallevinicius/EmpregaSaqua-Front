@@ -21,6 +21,9 @@ import type { PublicCompany,
   Experience,
   Job,
   JobAlert,
+  AdminReport,
+  ReportReason,
+  ReportStatus,
   JobApplication,
   JobArea,
   JobStatus,
@@ -326,9 +329,27 @@ export const analyticsApi = {
   public: (signal?: AbortSignal) => request<PublicStats>('/analytics/public', { auth: false, signal }),
 };
 
+// ---------- Denúncias ----------
+
+export interface ReportInput {
+  job_id: string;
+  reason: ReportReason;
+  /** Obrigatória: 10 a 500 caracteres (o back confere de novo). */
+  justification: string;
+}
+
+export const reportsApi = {
+  create: (input: ReportInput) => request<{ id: string; status: ReportStatus; created_at: string }>('/reports', { method: 'POST', body: input }),
+};
+
 // ---------- Admin ----------
 
 export const adminApi = {
+  listReports: (params: { status?: ReportStatus; page: number; limit: number }, signal?: AbortSignal) =>
+    request<Paginated<AdminReport>>('/admin/reports', { query: params, signal }),
+  resolveReport: (id: string, input: { status: 'RESOLVED' | 'DISMISSED'; remove_job?: boolean; admin_note?: string }) =>
+    request<unknown>(`/admin/reports/${seg(id)}`, { method: 'PATCH', body: input }),
+
   approveCompany: (id: string) => request<CompanyProfile>(`/admin/companies/${seg(id)}/approve`, { method: 'PATCH' }),
   rejectCompany: (id: string) => request<CompanyProfile>(`/admin/companies/${seg(id)}/reject`, { method: 'PATCH' }),
   getVerificationDocument: (id: string, signal?: AbortSignal) =>
