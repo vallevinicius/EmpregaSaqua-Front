@@ -1,17 +1,26 @@
 import { Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { analyticsApi } from '@/api/endpoints';
-import { PageHeader, Skeleton, buttonClass } from '@/components/ui';
+import { Alert, PageHeader, Skeleton, buttonClass } from '@/components/ui';
 import { ErrorState } from '@/components/feedback';
 import { StatTile } from '@/components/charts';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { useOpenReportsCount } from './AdminLayout';
 
 export default function AdminDashboardPage() {
+  const openReports = useOpenReportsCount();
   useDocumentTitle("Painel administrativo");
   const q = useQuery({ queryKey: ['analytics', 'admin'], queryFn: ({ signal }) => analyticsApi.admin(signal), refetchInterval: 60_000 });
   return (
     <div>
       <PageHeader title="Painel administrativo" actions={<Link to="/admin/moderacao" className={buttonClass()}>Ir para moderação</Link>} />
+      {openReports > 0 && (
+        <div className="mb-6">
+          <Alert tone="warning" title={openReports === 1 ? '1 denúncia aguardando análise' : `${openReports} denúncias aguardando análise`}>
+            Usuários denunciaram vagas. <Link to="/admin/denuncias" className="font-semibold underline">Ver denúncias</Link>
+          </Alert>
+        </div>
+      )}
       {q.isPending ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-28" />)}</div>
       ) : q.isError ? (
