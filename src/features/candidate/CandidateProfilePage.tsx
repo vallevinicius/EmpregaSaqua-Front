@@ -12,6 +12,7 @@ import { ApiErrorAlert, SafeText, useToast } from '@/components/feedback';
 import { CepLookup, StringListInput, cepToAddress } from '@/components/inputs';
 import { BriefcaseIcon, CameraIcon, FileTextIcon, GraduationCapIcon, IdentificationCardIcon, SparkleIcon, TranslateIcon, TrashIcon } from '@/components/icons';
 import { APPLICATION_STATUS_LABEL, ESCOLARIDADE_LABEL, IDIOMA_LABEL, JOB_AREA_LABEL, NIVEL_IDIOMA_LABEL, formatDate } from '@/lib/format';
+import { BAIRROS_SAQUAREMA, isBairro, matchBairro } from '@/lib/bairros';
 import { IMAGE_TYPES, decodeEntities, onlyDigits, safeAssetUrl } from '@/lib/safe';
 import { errorMessage } from '@/lib/http';
 import { ResumePreview } from './ResumePreview';
@@ -32,6 +33,7 @@ const schema = z.object({
     .trim()
     .refine((v) => v === '' || /^\d{10,13}$/.test(onlyDigits(v)), 'Telefone com DDD (10 a 13 dígitos).'),
   address: z.string().trim().max(200),
+  bairro: z.string().refine((v): boolean => v === '' || isBairro(v), 'Escolha um bairro da lista.'),
   genero: z.string(),
   cargo_interesse: z.string().trim().max(150),
   is_pcd: z.boolean(),
@@ -78,6 +80,7 @@ const EMPTY: Values = {
   bio: '',
   telefone: '',
   address: '',
+  bairro: '',
   genero: '',
   cargo_interesse: '',
   is_pcd: false,
@@ -96,6 +99,7 @@ function toValues(p: CandidateProfile): Values {
     bio: decodeEntities(p.bio),
     telefone: p.telefone ?? '',
     address: decodeEntities(p.address),
+    bairro: isBairro(p.bairro) ? p.bairro : '',
     genero: p.genero ?? '',
     cargo_interesse: decodeEntities(p.cargo_interesse ?? ''),
     is_pcd: p.is_pcd,
@@ -149,6 +153,7 @@ export default function CandidateProfilePage() {
       if (dirtyFields.bio) body.bio = v.bio;
       if (dirtyFields.telefone) body.telefone = onlyDigits(v.telefone);
       if (dirtyFields.address) body.address = v.address;
+      if (dirtyFields.bairro) body.bairro = v.bairro || null;
       if (dirtyFields.genero) body.genero = v.genero;
       if (dirtyFields.cargo_interesse) body.cargo_interesse = v.cargo_interesse;
       if (dirtyFields.is_pcd) body.is_pcd = v.is_pcd;
@@ -202,7 +207,23 @@ export default function CandidateProfilePage() {
               <Field label="Endereço" error={errors.address?.message}>
                 {({ id, describedBy, invalid }) => <Input id={id} autoComplete="street-address" maxLength={200} aria-describedby={describedBy} invalid={invalid} {...form.register('address')} />}
               </Field>
-              <CepLookup className="sm:col-span-2" onFound={(r) => form.setValue('address', cepToAddress(r), { shouldDirty: true, shouldValidate: true })} />
+              <CepLookup
+                className="sm:col-span-2"
+                onFound={(r) => {
+                  form.setValue('address', cepToAddress(r), { shouldDirty: true, shouldValidate: true });
+                  // O CEP já traz o bairro: se bater com a lista oficial, preenche sozinho (dá para trocar).
+                  const b = matchBairro(r.neighborhood);
+                  if (b) form.setValue('bairro', b, { shouldDirty: true, shouldValidate: true });
+                }}
+              />
+              <Field label="Bairro" error={errors.bairro?.message} hint="Ajuda a Prefeitura a entender onde estão os candidatos e a achar vagas perto de você.">
+                {({ id, invalid }) => (
+                  <Select id={id} invalid={invalid} {...form.register('bairro')}>
+                    <option value="">Não informar</option>
+                    {BAIRROS_SAQUAREMA.map((b) => <option key={b} value={b}>{b}</option>)}
+                  </Select>
+                )}
+              </Field>
               <Field label="Área de atuação" error={errors.area?.message} className="sm:col-span-2" hint="Vagas de outras áreas não vão aparecer como opção pra você se candidatar.">
                 {({ id }) => (
                   <Select id={id} {...form.register('area')}>

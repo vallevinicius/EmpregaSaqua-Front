@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BAIRROS_DESTAQUE, BAIRROS_SAQUAREMA, isBairro, isSaquarema } from './bairros';
+import { BAIRROS_DESTAQUE, BAIRROS_SAQUAREMA, isBairro, isSaquarema, matchBairro } from './bairros';
 
 describe('BAIRROS_SAQUAREMA', () => {
   it('tem os 46 bairros oficiais, sem repetição', () => {
@@ -40,5 +40,17 @@ describe('isSaquarema', () => {
     expect(isSaquarema('Saquaremas', 'RJ')).toBe(false);
     expect(isSaquarema('', 'RJ')).toBe(false);
     expect(isSaquarema(null, null)).toBe(false);
+  });
+});
+
+describe('matchBairro', () => {
+  it('acha o nome oficial ignorando acento, maiúscula e espaços', () => {
+    expect(matchBairro('  bacaxa ')).toBe('Bacaxá');
+    expect(matchBairro('CENTRO')).toBe('Centro');
+  });
+  it('devolve null para bairro de outra cidade, vazio e nulo', () => {
+    expect(matchBairro('Copacabana')).toBeNull();
+    expect(matchBairro('')).toBeNull();
+    expect(matchBairro(null)).toBeNull();
   });
 });

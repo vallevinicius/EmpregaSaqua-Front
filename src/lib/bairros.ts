@@ -26,3 +26,10 @@ export function isBairro(value: unknown): value is Bairro {
 export function isSaquarema(city: string | null | undefined, state: string | null | undefined): boolean {
   return normalizeText(city) === 'saquarema' && (state ?? '').trim().toUpperCase() === 'RJ';
 }
+
+/** Nome oficial do bairro a partir de um texto (ex.: o que o CEP devolve), ignorando acento e maiúscula. Null se não bater. */
+export function matchBairro(value: string | null | undefined): Bairro | null {
+  const n = normalizeText(value).trim();
+  if (!n) return null;
+  return BAIRROS_SAQUAREMA.find((b) => normalizeText(b) === n) ?? null;
+}

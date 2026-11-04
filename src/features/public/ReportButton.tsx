@@ -1,17 +1,23 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { useMutation } from '@tanstack/react-query';
-import { reportsApi } from '@/api/endpoints';
-import type { Job, ReportReason } from '@/api/types';
+import { reportsApi, type ReportTarget } from '@/api/endpoints';
+import type { ReportReason } from '@/api/types';
 import { ConfirmDialog, Field, Select, Textarea, buttonClass } from '@/components/ui';
 import { ApiErrorAlert, useToast } from '@/components/feedback';
 import { JUSTIFICATION_MAX, REPORT_REASONS, validateJustification } from '@/lib/reports';
 
+const COPY = {
+  vaga: { button: 'Denunciar esta vaga', title: 'Denunciar vaga', done: 'A Prefeitura vai analisar a vaga.', decide: 'a vaga sai do ar', ask: 'Algo errado com esta vaga?' },
+  empresa: { button: 'Denunciar esta empresa', title: 'Denunciar empresa', done: 'A Prefeitura vai analisar a empresa.', decide: 'a empresa é suspensa', ask: 'Algo errado com esta empresa?' },
+} as const;
+
 /**
- * Denúncia de vaga. Só quem está logado denuncia (o back também exige) e a justificativa é obrigatória.
- * Deslogado, o botão leva ao login e volta para a vaga.
+ * Denúncia de vaga ou de empresa. Só quem está logado denuncia (o back também exige) e a justificativa é obrigatória.
+ * Deslogado, o link leva ao login e volta para a página de origem (`from`).
  */
-export function ReportJobButton({ job, loggedIn }: { job: Job; loggedIn: boolean }) {
+export function ReportButton({ target, noun, from, loggedIn }: { target: ReportTarget; noun: 'vaga' | 'empresa'; from: string; loggedIn: boolean }) {
+  const copy = COPY[noun];
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<ReportReason>('SCAM');
@@ -20,9 +26,9 @@ export function ReportJobButton({ job, loggedIn }: { job: Job; loggedIn: boolean
   const error = touched ? validateJustification(text) : null;
 
   const mutation = useMutation({
-    mutationFn: () => reportsApi.create({ job_id: job.id, reason, justification: text.trim() }),
+    mutationFn: () => reportsApi.create({ ...target, reason, justification: text.trim() }),
     onSuccess: () => {
-      toast('Denúncia enviada. A Prefeitura vai analisar a vaga. Obrigado por avisar!', 'success');
+      toast(`Denúncia enviada. ${copy.done} Obrigado por avisar!`, 'success');
       close();
     },
   });
@@ -43,8 +49,8 @@ export function ReportJobButton({ job, loggedIn }: { job: Job; loggedIn: boolean
   if (!loggedIn) {
     return (
       <p className="text-center text-xs text-muted">
-        Algo errado com esta vaga?{' '}
-        <Link to="/entrar" state={{ from: `/vagas/${job.id}` }} className="font-semibold text-primary hover:underline">
+        {copy.ask}{' '}
+        <Link to="/entrar" state={{ from }} className="font-semibold text-primary hover:underline">
           Entre para denunciar
         </Link>
         .
@@ -55,12 +61,12 @@ export function ReportJobButton({ job, loggedIn }: { job: Job; loggedIn: boolean
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className={buttonClass('ghost', 'sm', 'self-center text-muted')}>
-        Denunciar esta vaga
+        {copy.button}
       </button>
       <ConfirmDialog
         open={open}
-        title="Denunciar vaga"
-        description="Conte o que há de errado. A Prefeitura analisa cada denúncia e decide se a vaga sai do ar."
+        title={copy.title}
+        description={`Conte o que há de errado. A Prefeitura analisa cada denúncia e decide se ${copy.decide}.`}
         confirmLabel="Enviar denúncia"
         loading={mutation.isPending}
         onConfirm={submit}

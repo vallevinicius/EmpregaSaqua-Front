@@ -6,10 +6,12 @@ import { ErrorState, SafeText } from '@/components/feedback';
 import { BriefcaseIcon, MapPinIcon, ShieldCheckIcon } from '@/components/icons';
 import { EmptyState, Pagination, Skeleton, buttonClass } from '@/components/ui';
 import { UUID_RE } from '@/features/admin/uuid';
+import { useSession } from '@/auth/useAuth';
 import { ApiError } from '@/lib/http';
 import { decodeEntities } from '@/lib/safe';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { CompanyLogo, JobCard } from './JobCard';
+import { ReportButton } from './ReportButton';
 
 const PAGE_SIZE = 10;
 
@@ -18,6 +20,7 @@ export default function CompanyPublicPage() {
   const { id = '' } = useParams();
   const valid = UUID_RE.test(id);
   const [page, setPage] = useState(1);
+  const session = useSession();
 
   const company = useQuery({ queryKey: ['companies', id], queryFn: ({ signal }) => companiesApi.get(id, signal), enabled: valid, retry: false });
   const jobs = useQuery({
@@ -41,6 +44,8 @@ export default function CompanyPublicPage() {
   if (company.isPending) return <PageSkeleton />;
 
   const c = company.data;
+  // Não denuncia a própria empresa nem como admin (o back também recusa).
+  const canReport = session?.user.id !== id && session?.user.role !== 'ADMIN';
   return (
     <div>
       <header className="border-b border-border bg-surface">
@@ -93,6 +98,12 @@ export default function CompanyPublicPage() {
           </>
         )}
       </section>
+
+      {canReport && (
+        <div className="mx-auto flex max-w-7xl justify-center px-4 pb-10 sm:px-6">
+          <ReportButton target={{ employer_id: id }} noun="empresa" from={`/empresas/${id}`} loggedIn={!!session} />
+        </div>
+      )}
     </div>
   );
 }

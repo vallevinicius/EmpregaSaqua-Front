@@ -22,6 +22,7 @@ const NAV: Record<Role | 'PUBLIC', NavItem[]> = {
   PUBLIC: [
     { to: '/', label: 'Vagas', end: true },
     { to: '/curriculo', label: 'Crie seu currículo' },
+    { to: '/eventos', label: 'Feiras e cursos' },
     { to: '/vagas-salvas', label: 'Vagas salvas' },
   ],
   JOB_SEEKER: [
@@ -267,6 +268,7 @@ function Footer({ loggedIn }: { loggedIn: boolean }) {
           <Link to="/" className={link}>Buscar vagas</Link>
           {!loggedIn && <Link to="/cadastro" className={link}>Cadastre-se</Link>}
           <Link to="/candidato/candidaturas" className={link}>Minhas candidaturas</Link>
+          <Link to="/eventos" className={link}>Feiras e cursos</Link>
           <Link to="/ajuda" className={link}>Central de ajuda</Link>
         </div>
         <div className={col}>
