@@ -34,7 +34,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { ApiError } from '@/lib/http';
 import { similarJobs } from '@/lib/recommend';
 import { CompanyLogo, JobCard } from './JobCard';
-import { ReportJobButton } from './ReportJobButton';
+import { ReportButton } from './ReportButton';
 
 export default function JobDetailPage() {
   const { id = '' } = useParams();
@@ -171,7 +171,7 @@ export default function JobDetailPage() {
             </Card>
           )}
 
-          {job.status === 'ACTIVE' && !isOwner && !isAdmin && <ReportJobButton job={job} loggedIn={!!session} />}
+          {job.status === 'ACTIVE' && !isOwner && !isAdmin && <ReportButton target={{ job_id: job.id }} noun="vaga" from={`/vagas/${job.id}`} loggedIn={!!session} />}
         </aside>
       </Container>
     </div>
