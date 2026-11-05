@@ -250,6 +250,10 @@ export default function RegisterPage() {
 
         <ApiErrorAlert error={mutation.error} />
         <Button type="submit" size="lg" loading={mutation.isPending}>Criar conta</Button>
+        <p className="text-center text-xs text-muted">
+          Ao criar sua conta você concorda com os <Link to="/termos" className="underline">Termos de uso</Link> e com a{' '}
+          <Link to="/privacidade" className="underline">Política de privacidade</Link>.
+        </p>
       </form>
     </AuthShell>
   );

@@ -38,6 +38,8 @@ const ChatPage = lazy(() => import('@/features/chat/ChatPage'));
 const NotFoundPage = lazy(() => import('@/features/public/NotFoundPage'));
 const ConfirmAccountDeletionPage = lazy(() => import('@/features/public/ConfirmAccountDeletionPage'));
 const VerifyEmailPage = lazy(() => import('@/features/auth/VerifyEmailPage'));
+const TermsPage = lazy(() => import('@/features/public/LegalPages').then((m) => ({ default: m.TermsPage })));
+const PrivacyPage = lazy(() => import('@/features/public/LegalPages').then((m) => ({ default: m.PrivacyPage })));
 const CompanyPublicPage = lazy(() => import('@/features/public/CompanyPublicPage'));
 
 export function App() {
@@ -48,6 +50,8 @@ export function App() {
           <Route index element={<JobsListPage />} />
           <Route path="vagas/:id" element={<JobDetailPage />} />
           <Route path="ajuda" element={<HelpPage />} />
+          <Route path="termos" element={<TermsPage />} />
+          <Route path="privacidade" element={<PrivacyPage />} />
           <Route path="eventos" element={<EventsPage />} />
           <Route path="empresas/:id" element={<CompanyPublicPage />} />
           <Route path="vagas-salvas" element={<SavedJobsPage />} />

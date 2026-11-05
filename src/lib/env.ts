@@ -10,4 +10,6 @@ export const env = {
   apiUrl: normalizeBase(import.meta.env.VITE_API_URL, '/api'),
   /** Vazio = mesma origem da página (proxy /socket.io). */
   wsUrl: (import.meta.env.VITE_WS_URL ?? '').trim(),
+  /** Opcional: URL que recebe erros do navegador (JSON via sendBeacon). Vazio = só console. */
+  errorEndpoint: (import.meta.env.VITE_ERROR_ENDPOINT ?? '').trim(),
 } as const;

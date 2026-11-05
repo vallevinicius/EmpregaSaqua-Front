@@ -30,7 +30,8 @@ import { APPLICATION_STATUS_LABEL, CONTRACT_LABEL, ESCOLARIDADE_LABEL, IDIOMA_LA
 import { decodeEntities, mailtoLink, safeHttpUrl, whatsappLink } from '@/lib/safe';
 import { profileCompleteness } from '@/lib/profile';
 import { toggleSavedJob, useSavedJobs } from '@/lib/savedJobs';
-import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { useDocumentTitle, useJsonLd } from '@/lib/useDocumentTitle';
+import { buildJobPostingJsonLd, toJsonLdScript } from '@/lib/jobPosting';
 import { ApiError } from '@/lib/http';
 import { similarJobs } from '@/lib/recommend';
 import { CompanyLogo, JobCard } from './JobCard';
@@ -42,6 +43,11 @@ export default function JobDetailPage() {
   const query = useQuery({ queryKey: ['jobs', 'detail', id], queryFn: ({ signal }) => jobsApi.get(id, signal), enabled: !!id });
   useDocumentTitle(query.data ? `${decodeEntities(query.data.title)} - ${decodeEntities(query.data.employer?.company_profile?.nome_fantasia ?? 'Vaga')}` : 'Vaga', query.data ? `Vaga de ${decodeEntities(query.data.title)} em ${decodeEntities(query.data.address)}. Candidate-se pelo EmpregaSaquá.` : undefined);
   const savedJobs = useSavedJobs();
+  const jobLd = useMemo(() => {
+    const data = query.data ? buildJobPostingJsonLd(query.data, window.location.origin) : null;
+    return data ? toJsonLdScript(data) : null;
+  }, [query.data]);
+  useJsonLd(jobLd);
 
   if (query.isPending) return <DetailSkeleton />;
   if (query.isError) {
