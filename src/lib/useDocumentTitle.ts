@@ -16,3 +16,15 @@ export function useDocumentTitle(title?: string | null, description?: string) {
     };
   }, [title, description]);
 }
+
+/** Injeta JSON-LD (dados estruturados) no <head> enquanto a página está montada. `json` nulo = nada. */
+export function useJsonLd(json: string | null) {
+  useEffect(() => {
+    if (!json) return;
+    const el = document.createElement('script');
+    el.type = 'application/ld+json';
+    el.text = json;
+    document.head.appendChild(el);
+    return () => el.remove();
+  }, [json]);
+}

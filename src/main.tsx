@@ -5,6 +5,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ApiError } from '@/lib/http';
 import { ToastProvider } from '@/components/feedback';
 import { App } from './App';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { installErrorReporting } from '@/lib/errorReport';
+import { env } from '@/lib/env';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -23,11 +26,14 @@ const queryClient = new QueryClient({
   },
 });
 
+installErrorReporting(env.errorEndpoint);
+
 const root = document.getElementById('root');
 if (!root) throw new Error('#root ausente');
 
 createRoot(root).render(
   <StrictMode>
+    <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <ToastProvider>
@@ -35,5 +41,6 @@ createRoot(root).render(
         </ToastProvider>
       </BrowserRouter>
     </QueryClientProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );

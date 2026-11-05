@@ -28,6 +28,7 @@ const NAV: Record<Role | 'PUBLIC', NavItem[]> = {
   JOB_SEEKER: [
     { to: '/', label: 'Vagas', end: true },
     { to: '/candidato/candidaturas', label: 'Minhas candidaturas' },
+    { to: '/eventos', label: 'Feiras e cursos' },
     { to: '/vagas-salvas', label: 'Vagas salvas' },
     { to: '/candidato/alertas', label: 'Alertas' },
     { to: '/candidato/perfil', label: 'Meu currículo' },
@@ -38,12 +39,16 @@ const NAV: Record<Role | 'PUBLIC', NavItem[]> = {
     { to: '/empresa/vagas', label: 'Minhas vagas' },
     { to: '/empresa/talentos', label: 'Buscar talentos' },
     { to: '/empresa/banco-de-talentos', label: 'Banco de talentos' },
+    { to: '/eventos', label: 'Feiras e cursos' },
     { to: '/mensagens', label: 'Mensagens' },
     { to: '/empresa/perfil', label: 'Empresa' },
   ],
   // A navegação interna do admin (Moderação/Vagas/Empresas/Usuários) vive nas abas de AdminLayout,
   // não aqui — isso evita lotar a navbar principal com itens de uma única área.
-  ADMIN: [{ to: '/', label: 'Vagas públicas', end: true }],
+  ADMIN: [
+    { to: '/', label: 'Vagas públicas', end: true },
+    { to: '/eventos', label: 'Feiras e cursos' },
+  ],
 };
 
 const FULL_BLEED = ['/', '/vagas/:id', '/entrar', '/cadastro'];
@@ -281,6 +286,10 @@ function Footer({ loggedIn }: { loggedIn: boolean }) {
       <div className="border-t border-white/15">
         <p className="mx-auto max-w-7xl px-4 py-5 text-xs text-white/75 sm:px-6">
           © {new Date().getFullYear()} EmpregaSaqua. Vagas em Saquarema.
+          {' · '}
+          <Link to="/termos" className="underline">Termos de uso</Link>
+          {' · '}
+          <Link to="/privacidade" className="underline">Privacidade</Link>
         </p>
       </div>
     </footer>
