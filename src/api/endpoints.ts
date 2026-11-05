@@ -343,6 +343,8 @@ export const analyticsApi = {
 export interface EventInput {
   kind: EventKind;
   title: string;
+  /** Resumo (até 160) que aparece no card; null/omitido = usa o começo da descrição. */
+  short_description?: string | null;
   description: string;
   location: string;
   bairro?: string | null;

@@ -370,6 +370,9 @@ export interface CityEvent {
   id: string;
   kind: EventKind;
   title: string;
+  /** Resumo do card da lista. Ausente em eventos antigos (usa-se o começo de `description`). */
+  short_description?: string | null;
+  /** Texto completo, mostrado no pop-up. */
   description: string;
   location: string;
   bairro: string | null;

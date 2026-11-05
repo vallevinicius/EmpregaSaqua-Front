@@ -26,3 +26,24 @@ describe('formatEventWhen', () => {
 describe('EVENT_KIND_LABEL', () => {
   it('cobre os dois tipos do back', () => expect(Object.keys(EVENT_KIND_LABEL).sort()).toEqual(['COURSE', 'FAIR']));
 });
+
+import { eventSummary } from './events';
+
+describe('eventSummary', () => {
+  it('usa a descrição curta quando existe', () => {
+    expect(eventSummary({ short_description: ' Resumo ', description: 'Texto completo bem maior' })).toBe('Resumo');
+  });
+  it('sem descrição curta, usa a completa se for pequena', () => {
+    expect(eventSummary({ short_description: null, description: 'Curta mesmo' })).toBe('Curta mesmo');
+    expect(eventSummary({ description: 'Sem o campo' })).toBe('Sem o campo');
+  });
+  it('sem descrição curta e texto longo: corta em palavra inteira com reticências', () => {
+    const out = eventSummary({ short_description: '', description: 'palavra '.repeat(60) });
+    expect(out.endsWith('…')).toBe(true);
+    expect(out.length).toBeLessThanOrEqual(141);
+    expect(out).not.toMatch(/palav…$/);
+  });
+  it('espaços em branco viram um só', () => {
+    expect(eventSummary({ description: 'a\n\n b   c' })).toBe('a b c');
+  });
+});

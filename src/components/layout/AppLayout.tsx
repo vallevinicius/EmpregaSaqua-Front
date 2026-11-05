@@ -141,14 +141,14 @@ export function AppLayout() {
         Pular para o conteúdo
       </a>
       <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-8 px-4 sm:px-6">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr]">
           <Logo />
-          {/* Nav colado no logo (padrão mais comum de navbar); a área de sessão vai pro extremo
-              direito sozinha via ml-auto, sem depender da largura dela pra posicionar o nav. */}
+          {/* Em telas grandes: grade 1fr | nav | 1fr, então o menu fica sempre no centro da barra,
+              independentemente da largura do logo ou da área de sessão. */}
           <nav aria-label="Principal" className="hidden items-center lg:flex">
             {items.map((i) => navLink(i))}
           </nav>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2 lg:justify-self-end">
             {session ? (
               <>
                 {role === 'ADMIN' && (

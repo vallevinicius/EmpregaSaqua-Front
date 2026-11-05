@@ -18,6 +18,7 @@ const schema = z
   .object({
     kind: z.enum(['FAIR', 'COURSE']),
     title: z.string().trim().min(3, 'Mínimo de 3 caracteres.').max(150, 'Máximo de 150 caracteres.'),
+    short_description: z.string().trim().max(160, 'Máximo de 160 caracteres.').refine((v): boolean => v === '' || v.length >= 3, 'Mínimo de 3 caracteres.'),
     description: z.string().trim().min(10, 'Descreva em pelo menos 10 caracteres.').max(2000, 'Máximo de 2000 caracteres.'),
     location: z.string().trim().min(3, 'Informe o local.').max(200, 'Máximo de 200 caracteres.'),
     bairro: z.string().refine((v): boolean => v === '' || isBairro(v), 'Escolha um bairro da lista.'),
@@ -36,11 +37,12 @@ const schema = z
   });
 type Values = z.infer<typeof schema>;
 
-const EMPTY: Values = { kind: 'FAIR', title: '', description: '', location: '', bairro: '', starts_at: '', ends_at: '', link: '', published: true };
+const EMPTY: Values = { kind: 'FAIR', title: '', short_description: '', description: '', location: '', bairro: '', starts_at: '', ends_at: '', link: '', published: true };
 
 const toValues = (e: CityEvent): Values => ({
   kind: e.kind,
   title: e.title,
+  short_description: e.short_description ?? '',
   description: e.description,
   location: e.location,
   bairro: isBairro(e.bairro) ? e.bairro : '',
@@ -86,6 +88,7 @@ export default function AdminEventsPage() {
       const input: EventInput = {
         kind: v.kind,
         title: v.title,
+        short_description: v.short_description || null,
         description: v.description,
         location: v.location,
         bairro: v.bairro || null,
@@ -153,8 +156,11 @@ export default function AdminEventsPage() {
                 </Select>
               )}
             </Field>
-            <Field label="Descrição" error={errors.description?.message} className="sm:col-span-2" required>
-              {({ id, invalid }) => <Textarea id={id} rows={5} maxLength={2000} invalid={invalid} {...form.register('description')} />}
+            <Field label="Descrição curta" error={errors.short_description?.message} className="sm:col-span-2" hint="Aparece no card da lista, do lado de fora (até 160 caracteres). Se ficar vazia, usamos o começo da descrição completa.">
+              {({ id, invalid }) => <Input id={id} maxLength={160} invalid={invalid} {...form.register('short_description')} />}
+            </Field>
+            <Field label="Descrição completa" error={errors.description?.message} className="sm:col-span-2" hint="Aparece quando a pessoa abre o evento (pop-up): programa, requisitos, o que levar, etc." required>
+              {({ id, invalid }) => <Textarea id={id} rows={6} maxLength={2000} invalid={invalid} {...form.register('description')} />}
             </Field>
             <Field label="Link de informações ou inscrição" error={errors.link?.message} className="sm:col-span-2" hint="Opcional. Começa com https://">
               {({ id, invalid }) => <Input id={id} type="url" inputMode="url" maxLength={300} invalid={invalid} {...form.register('link')} />}

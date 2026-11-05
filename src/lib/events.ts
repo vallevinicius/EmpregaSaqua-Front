@@ -29,3 +29,15 @@ export function fromDatetimeLocal(value: string): string | null {
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
+
+const SUMMARY_MAX = 140;
+
+/** Texto do card: a descrição curta, ou (eventos antigos) o começo da completa, cortado em palavra inteira. */
+export function eventSummary(e: Pick<CityEvent, 'short_description' | 'description'>): string {
+  const short = e.short_description?.trim();
+  if (short) return short;
+  const full = e.description.replace(/\s+/g, ' ').trim();
+  if (full.length <= SUMMARY_MAX) return full;
+  const cut = full.slice(0, SUMMARY_MAX);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), 40)).trimEnd()}…`;
+}

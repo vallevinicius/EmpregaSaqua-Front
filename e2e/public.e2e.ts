@@ -119,3 +119,38 @@ for (const [nome, path] of [['home', '/'], ['ajuda', '/ajuda'], ['termos', '/ter
     expect(grave.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(' | ')}`)).toEqual([]);
   });
 }
+
+test('feiras e cursos: card mostra o resumo e "Mais informações" abre o pop-up com a descrição completa', async ({ page }) => {
+  const ev = {
+    id: 'ev1', kind: 'COURSE', title: 'Curso de Informática', short_description: 'Resumo curto do curso',
+    description: 'Descrição completa com todos os detalhes do curso.\n\nLeve documento com foto.',
+    location: 'Biblioteca Municipal', bairro: 'Itaúna', starts_at: '2099-02-10T12:30:00.000Z', ends_at: null,
+    link: 'https://exemplo.gov.br/curso', published: true, created_at: '2026-11-01T10:00:00.000Z',
+  };
+  await mockApi(page, async (p) => {
+    await p.route('**/api/events*', (r) => r.fulfill(json([ev])));
+  });
+  await page.goto('/eventos');
+  await expect(page.getByText('Resumo curto do curso')).toBeVisible();
+  await expect(page.getByText('Descrição completa com todos os detalhes')).toBeHidden();
+  // clicar em qualquer ponto do card (aqui: canto inferior direito, longe do título) abre o pop-up
+  const card = page.locator('article');
+  const box = (await card.boundingBox())!;
+  await card.click({ position: { x: box.width - 20, y: box.height - 20 } });
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('Descrição completa com todos os detalhes')).toBeVisible();
+  await expect(dialog.getByText('Biblioteca Municipal')).toBeVisible();
+  await expect(dialog.getByRole('link', { name: 'https://exemplo.gov.br/curso' })).toBeVisible();
+  await expect(dialog.getByRole('link', { name: 'Acessar página do evento' })).toHaveAttribute('href', 'https://exemplo.gov.br/curso');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+});
+
+test('navbar: menu fica centralizado na barra em tela grande', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 800 });
+  await mockApi(page);
+  await page.goto('/');
+  const nav = await page.getByRole('navigation', { name: 'Principal' }).boundingBox();
+  const centro = nav!.x + nav!.width / 2;
+  expect(Math.abs(centro - 1440 / 2)).toBeLessThan(2);
+});
