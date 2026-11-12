@@ -27,10 +27,11 @@ export default defineConfig(({ mode }) => {
       },
     },
     // Mesmos headers de produção no `vite preview` (em dev o HMR precisa de inline/eval, então CSP só aqui).
+    // vlibras.gov.br e style 'unsafe-inline': o menu de acessibilidade (Libras/Sienna) carrega o VLibras de lá e injeta estilos.
     preview: {
       headers: {
         'Content-Security-Policy':
-          "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' ws: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
+          "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://vlibras.gov.br; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://vlibras.gov.br; font-src 'self' data: https://vlibras.gov.br; media-src 'self' blob: https://vlibras.gov.br; worker-src 'self' blob:; connect-src 'self' ws: wss: https://vlibras.gov.br; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
         'X-Content-Type-Options': 'nosniff',
         'X-Frame-Options': 'DENY',
         'Referrer-Policy': 'strict-origin-when-cross-origin',
