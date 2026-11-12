@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageLoader } from '@/components/ui';
 import { RedirectIfAuthed, RequireAuth } from '@/auth/guards';
 import { JobsListPage } from '@/features/public/JobsListPage';
+import { AcessibilidadeSaqua } from '@/components/AcessibilidadeSaqua';
 
 // Code-splitting por área: candidato não baixa o bundle do admin e vice-versa.
 const ResumeBuilderPage = lazy(() => import('@/features/public/ResumeBuilderPage'));
@@ -44,6 +45,8 @@ const CompanyPublicPage = lazy(() => import('@/features/public/CompanyPublicPage
 
 export function App() {
   return (
+    <>
+    <AcessibilidadeSaqua />
     <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route element={<AppLayout />}>
@@ -98,5 +101,6 @@ export function App() {
         </Route>
       </Routes>
     </Suspense>
+    </>
   );
 }
